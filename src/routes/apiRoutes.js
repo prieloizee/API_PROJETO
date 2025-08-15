@@ -14,9 +14,14 @@ const estabelecimentosController = require('../controllers/estabelecimentoContro
 
  //rotas para estabelecimentoController
  router.get('/buscar', estabelecimentosController.buscarEstabelecimentos);
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=restaurant
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=park
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=store
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=park
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=store
+
+ router.get('/buscar/:id', estabelecimentosController.buscarPorId);
+ //http://localhost:3000/projeto_final/buscar/ ID
+
+
 
 
 module.exports = router;
