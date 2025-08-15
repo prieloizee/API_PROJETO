@@ -2,6 +2,7 @@ const router = require('express').Router();
 const verifyJWT = require("../services/verifyJWT");
 const usuarioController = require('../controllers/usuarioController');
 const estabelecimentosController = require('../controllers/estabelecimentoController');
+const avaliacaoController= require ('../controllers/avaliacaoController');
 
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
@@ -18,5 +19,19 @@ const estabelecimentosController = require('../controllers/estabelecimentoContro
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=park
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=store
 
+//router avaliaçoes
+router.post("/avaliacao", avaliacaoController.create);
+
+// Listar comentários de um local
+router.get("/:google_place_id", avaliacaoController.listByPlace);
+
+// Atualizar comentário
+router.put("/avaliacao", avaliacaoController.update);
+
+// Deletar comentário
+router.delete("/:id_avaliacao", avaliacaoController.delete);
+
+//http://localhost:3000/projeto_final/avaliacao
 
 module.exports = router;
+

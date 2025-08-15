@@ -1,6 +1,7 @@
 ## Baixa e executa a imagem do node na versão Alpine (Versão Simplificada)
 FROM node:alpine
 
+##AIzaSyDVMRxumZoh-loXxT-KSlL01-_-k3wOXEg
 ## Define o local onde o app irá ficar no disco do container
 ## O caminho o Dev quem escolhe
 ## /usr (abreviação de user)
