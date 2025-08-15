@@ -1,3 +1,4 @@
+
 const { buscarEstabelecimentosGoogle, buscarDetalhesEstabelecimento } = require('../services/googleMapsService');
 const pool = require('../db/connect').promise(); // Usando versão promise do pool
 
@@ -91,6 +92,7 @@ module.exports = class EstabelecimentoController {
         message: 'Busca concluída com sucesso',
         total: resultados.length,
         estabelecimentos: resultados
+
       });
 
     } catch (err) {
@@ -102,6 +104,7 @@ module.exports = class EstabelecimentoController {
   // Buscar detalhes por place_id
   static async buscarPorId(req, res) {
     const { id } = req.params;
+
 
     if (!id) return res.status(400).json({ message: "Parâmetro obrigatório: id" });
 
@@ -124,5 +127,6 @@ module.exports = class EstabelecimentoController {
       console.error(err);
       return res.status(500).json({ message: 'Erro interno do servidor', error: err.message });
     }
+
   }
 };
