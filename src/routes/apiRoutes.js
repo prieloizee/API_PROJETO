@@ -25,16 +25,10 @@ const avaliacaoController= require ('../controllers/avaliacaoController');
 
 
 //router avaliaçoes
-router.post("/avaliacao", avaliacaoController.create);
-
-// Listar comentários de um local
-router.get("/:google_place_id", avaliacaoController.listByPlace);
-
-// Atualizar comentário
-router.put("/avaliacao", avaliacaoController.update);
-
-// Deletar comentário
-router.delete("/:id_avaliacao", avaliacaoController.delete);
+router.post("/avaliacao",verifyJWT,avaliacaoController.create);
+router.get("/:google_place_id",verifyJWT, avaliacaoController.listByPlace);
+router.put("/avaliacao",verifyJWT, avaliacaoController.update);
+router.delete("/:id_avaliacao",verifyJWT,avaliacaoController.delete);
 
 //http://localhost:3000/projeto_final/avaliacao
 
