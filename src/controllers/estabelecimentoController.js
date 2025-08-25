@@ -1,54 +1,17 @@
-
-const {
-  buscarEstabelecimentosGoogle,
-  buscarDetalhesEstabelecimento,
-} = require("../services/googleMapsService");
-const pool = require("../db/connect").promise();
-
-// Mapeamento PT-BR -> Google Places
-const MAPA_TIPOS = {
-  restaurante: "restaurant",
-  bar: "bar",
-  café: "cafe",
-  academia: "gym",
-  parque: "park",
-  loja: "store",
-  hotel: "hotel",
-  museu: "museum",
-  shopping: "shopping_mall",
-};
+const { buscarEstabelecimentosGoogle, buscarDetalhesEstabelecimento } = require('../services/googleMapsService');
+const pool = require('../db/connect').promise();
 
 module.exports = class EstabelecimentoController {
-  // Buscar lista de estabelecimentos com IA e filtros
+  // Buscar lista de estabelecimentos
   static async buscarEstabelecimentos(req, res) {
-    const { location, radius, texto } = req.query;
+    const { location, radius, type } = req.query;
 
-    if (!location || !radius || !texto) {
-      return res
-        .status(400)
-        .json({ message: "Parâmetros obrigatórios: location, radius e texto" });
+    if (!location || !radius || !type) {
+      return res.status(400).json({ message: "Parâmetros obrigatórios: location, radius e type" });
     }
 
     try {
-      // 1. Interpretar texto com IA -> { type, keyword, preco, abertoAgora }
-      let filtro = await interpretarFiltro(texto);
-
-      // Garantir que existe type válido
-      let tipoGoogle = "restaurant";
-      if (filtro.type) {
-        tipoGoogle = MAPA_TIPOS[filtro.type.toLowerCase()] || "restaurant";
-      }
-
-      // 2. Buscar no Google Places com filtros
-      const estabelecimentosBrutos = await buscarEstabelecimentosGoogle(
-        location,
-        radius,
-        filtro.type,
-        filtro.keyword || null,
-        filtro.abertoAgora || false,
-        filtro.preco || null
-      );
-
+      const estabelecimentosBrutos = await buscarEstabelecimentosGoogle(location, radius, type);
       const resultados = [];
 
       for (const est of estabelecimentosBrutos) {
@@ -56,104 +19,82 @@ module.exports = class EstabelecimentoController {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
           const enderecoCompleto = detalhes?.formatted_address || est.vicinity;
 
-          if (!enderecoCompleto.toLowerCase().includes("franca")) continue;
+          // Filtro para só pegar de Franca
+          if (!enderecoCompleto.toLowerCase().includes('franca')) continue;
 
-          // Filtro adicional: aberto agora
-          if (
-            filtro.abertoAgora &&
-            detalhes.opening_hours &&
-            !detalhes.opening_hours.open_now
-          ) {
-            continue;
-          }
-
-          // Filtro adicional: palavra-chave no nome
-          if (
-            filtro.keyword &&
-            !detalhes.name.toLowerCase().includes(filtro.keyword.toLowerCase())
-          ) {
-            continue;
-          }
-
-          // Buscar avaliações no banco
+          // Buscar avaliações no banco pelo place_id
           const [avaliacoes] = await pool.query(
-            `SELECT id_avaliacao, id_usuario, comentario, created_at 
-             FROM avaliacoes 
-             WHERE google_place_id = ? 
-             ORDER BY created_at DESC`,
+            "SELECT id_avaliacao, id_usuario, comentario, created_at FROM avaliacoes WHERE google_place_id = ? ORDER BY created_at DESC",
             [est.place_id]
           );
 
-          resultados.push({
+          const estFormatado = {
             nome: est.name,
             endereco: enderecoCompleto,
-            categoria: est.types ? est.types[0] : "Não especificada",
+            categoria: est.types ? est.types[0] : 'Não especificada',
             telefone: detalhes?.formatted_phone_number || null,
             site: detalhes?.website || null,
             latitude: est.geometry?.location?.lat || null,
             longitude: est.geometry?.location?.lng || null,
             place_id: est.place_id,
             horarios: detalhes?.opening_hours?.weekday_text || [],
-            avaliacoes: avaliacoes || [],
-          });
+            avaliacoes: avaliacoes || []
+          };
+
+          resultados.push(estFormatado);
+
         } catch (err) {
-          console.error("Erro ao processar estabelecimento", est.place_id, err);
+          console.error('Erro ao processar estabelecimento', est.place_id, err);
         }
       }
 
       return res.status(200).json({
-        message: "Busca concluída com sucesso",
+        message: 'Busca concluída com sucesso',
         total: resultados.length,
-        estabelecimentos: resultados,
+        estabelecimentos: resultados
       });
+
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ message: "Erro interno", error: err.message });
+      return res.status(500).json({ message: 'Erro interno', error: err.message });
     }
   }
 
-  // Buscar por place_id
+  // Buscar detalhes por place_id + avaliações
   static async buscarPorId(req, res) {
-    const { id } = req.params;
-
-    if (!id)
-      return res.status(400).json({ message: "Parâmetro obrigatório: id" });
-
+    let { id } = req.params;
+    if (!id) return res.status(400).json({ message: "Parâmetro obrigatório: id" });
+  
+    id = id.trim(); // remove espaços extras
+  
     try {
       const detalhes = await buscarDetalhesEstabelecimento(id);
-      if (!detalhes)
-        return res
-          .status(404)
-          .json({ message: "Estabelecimento não encontrado" });
-
-      const [avaliacoesUsuarios] = await pool.query(
-        `SELECT usuario, nota, comentario 
-         FROM avaliacao 
-         WHERE place_id = ? 
-         ORDER BY data_criacao DESC`,
+      if (!detalhes) return res.status(404).json({ message: "Estabelecimento não encontrado" });
+  
+      const [avaliacoes] = await pool.query(
+        "SELECT id_avaliacao, id_usuario, comentario, created_at FROM avaliacoes WHERE LOWER(google_place_id) = LOWER(?) ORDER BY created_at DESC",
         [id]
       );
-
+  
+      console.log('ID da URL:', id);
+      console.log('Avaliações encontradas:', avaliacoes.length);
+  
       return res.status(200).json({
         nome: detalhes.name,
         endereco: detalhes.formatted_address,
+        categoria: detalhes.types ? detalhes.types[0] : 'Não especificada',
         telefone: detalhes.formatted_phone_number || null,
         site: detalhes.website || null,
-        avaliacao_google: detalhes.rating || null,
-        total_avaliacoes_google: detalhes.user_ratings_total || 0,
-        avaliacoes_usuarios:
-          avaliacoesUsuarios.length > 0 ? avaliacoesUsuarios : [],
-        horarios: detalhes.opening_hours?.weekday_text || [],
         latitude: detalhes.geometry?.location?.lat || null,
         longitude: detalhes.geometry?.location?.lng || null,
+        place_id: id,
+        horarios: detalhes.opening_hours?.weekday_text || [],
+        avaliacoes: avaliacoes || []
       });
+  
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ message: "Erro interno do servidor", error: err.message });
+      return res.status(500).json({ message: 'Erro interno do servidor', error: err.message });
     }
   }
-};
+}
