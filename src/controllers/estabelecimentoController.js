@@ -13,10 +13,11 @@ module.exports = class EstabelecimentoController {
     try {
       const estabelecimentosBrutos = await buscarEstabelecimentosGoogle(location, radius, type);
       const resultados = [];
-
+//Detalhes especificos
       for (const est of estabelecimentosBrutos) {
         try {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
+          //se nao existir o endereço detalhado usa o vicinity(endereço resumido)
           const enderecoCompleto = detalhes?.formatted_address || est.vicinity;
 
           // Filtro para só pegar de Franca
