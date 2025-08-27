@@ -20,7 +20,7 @@ module.exports = class EstabelecimentoController {
           //se nao existir o endereço detalhado usa o vicinity(endereço resumido)
           const enderecoCompleto = detalhes?.formatted_address || est.vicinity;
 
-          // Filtro para só pegar de Franca
+          
           if (!enderecoCompleto.toLowerCase().includes('franca')) continue;
 
           // Buscar avaliações no banco pelo place_id
