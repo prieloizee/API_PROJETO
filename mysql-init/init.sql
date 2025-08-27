@@ -127,6 +127,15 @@ CREATE TABLE `usuario` (
 -- Dumping data for table `usuario`
 --
 
+ CREATE TABLE favoritos (
+    id_favorito INT AUTO_INCREMENT PRIMARY KEY,
+       id_usuario INT NOT NULL,
+   google_place_id VARCHAR(255) NOT NULL,
+                                                 ->     nome_estabelecimento VARCHAR(255),
+                                                 ->     endereco VARCHAR(255),
+                                                 ->     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                                 ->     FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario)
+                                                 -> );
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
 INSERT INTO `usuario` VALUES (1,'Jo├úo Silva','joao.silva@example.com','senha123','16123456789'),(2,'Maria Oliveira','maria.oliveira@example.com','senha123','16987654321'),(3,'Carlos Pereira','carlos.pereira@example.com','senha123','16123987456'),(4,'Ana Souza','ana.souza@example.com','senha123','16456123789'),(5,'Pedro Costa','pedro.costa@example.com','senha123','16789123456'),(6,'Laura Lima','laura.lima@example.com','senha123','16321654987'),(8,'pri','pri24@pri','$2b$10$1SgaPMrX9KN/Bxc..aDHvu5fI3PzvqxbED2v0OMLVR6sBSdH6jge.','12345678909');

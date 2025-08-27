@@ -5,7 +5,7 @@ module.exports = class FavoritosController {
   // Adicionar favorito
   static async adicionaFavorito(req, res) {
     const { google_place_id, nome_estabelecimento, endereco } = req.body;
-    const id_usuario = Number(req.user.id_usuario); // garante número
+    const id_usuario = Number(req.userId); // garante número
 
     if (!google_place_id) {
       return res.status(400).json({ message: "google_place_id é obrigatório" });
