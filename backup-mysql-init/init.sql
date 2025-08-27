@@ -42,6 +42,22 @@ CREATE TABLE `estabelecimentos` (
 --
 -- Dumping data for table `estabelecimentos`
 --
+DROP TABLE IF EXISTS `avaliacoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `avaliacoes` (
+  `id_avaliacao` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `google_place_id` varchar(255) NOT NULL,
+  `comentario` text NOT NULL,
+  `nota` TINYINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_avaliacao`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `avaliacoes_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 LOCK TABLES `estabelecimentos` WRITE;
 /*!40000 ALTER TABLE `estabelecimentos` DISABLE KEYS */;
