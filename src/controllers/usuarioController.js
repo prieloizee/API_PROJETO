@@ -155,4 +155,59 @@ module.exports = class usuarioController {
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+  static async uploadImagemPerfil(req, res) {
+    try {
+      const id_usuario = req.user.id_usuario; // assumindo JWT para pegar o usuário
+      if (!req.file) {
+        return res.status(400).json({ message: "Nenhuma imagem enviada" });
+      }
+
+      const imagem = req.file.buffer;
+      const tipoImagem = req.file.mimetype;
+
+      // Verificação de tipo (apenas jpeg e png)
+      if (!['image/jpeg', 'image/png'].includes(tipoImagem)) {
+        return res.status(400).json({ message: "Formato inválido. Use JPEG ou PNG" });
+      }
+
+      // Limite de tamanho (2MB)
+      if (req.file.size > 2 * 1024 * 1024) {
+        return res.status(400).json({ message: "Imagem muito grande (máx: 2MB)" });
+      }
+
+      // Atualiza no banco
+      await pool.query(
+        `UPDATE usuarios SET imagem = ?, tipo_imagem = ? WHERE id_usuario = ?`,
+        [imagem, tipoImagem, id_usuario]
+      );
+
+      return res.status(200).json({ message: "Imagem atualizada com sucesso" });
+    } catch (error) {
+      console.error("Erro ao fazer upload:", error);
+      return res.status(500).json({ message: "Erro interno no servidor" });
+    }
+  }
+
+  // Obter imagem do perfil
+  static async getImagemPerfil(req, res) {
+    try {
+      const id_usuario = req.params.id;
+
+      const [rows] = await pool.query(
+        `SELECT imagem, tipo_imagem FROM usuarios WHERE id_usuario = ?`,
+        [id_usuario]
+      );
+
+      if (!rows.length || !rows[0].imagem) {
+        return res.status(404).send("Imagem não encontrada");
+      }
+
+      res.set("Content-Type", rows[0].tipo_imagem || "image/jpeg");
+      res.send(rows[0].imagem);
+    } catch (error) {
+      console.error("Erro ao buscar imagem:", error);
+      return res.status(500).json({ message: "Erro interno no servidor" });
+    }
+  }
+
 };

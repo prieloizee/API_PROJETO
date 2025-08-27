@@ -1,5 +1,6 @@
 -- MySQL dump 10.13  Distrib 8.0.43, for Linux (x86_64)
---
+-- CREATE DATABASE  IF NOT EXISTS `projeto_final` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+-- USE `projeto_final`;
 -- Host: localhost    Database: projeto_final
 -- ------------------------------------------------------
 -- Server version	8.0.43

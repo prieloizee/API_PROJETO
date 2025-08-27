@@ -4,6 +4,7 @@ const usuarioController = require('../controllers/usuarioController');
 const estabelecimentosController = require('../controllers/estabelecimentoController');
 const avaliacaoController= require ('../controllers/avaliacaoController');
 
+
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
  router.post('/login', usuarioController.loginUsuario);
@@ -31,6 +32,14 @@ router.put("/avaliacao",verifyJWT, avaliacaoController.update);
 router.delete("/:id_avaliacao",verifyJWT,avaliacaoController.delete);
 
 //http://localhost:3000/projeto_final/avaliacao
+
+const favoritosController = require('../controllers/favoritosController');
+
+// Favoritos
+router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
+router.get("/favoritos", verifyJWT, favoritosController.listFavoritos);
+router.delete("/favoritos/:id_favorito", verifyJWT, favoritosController.removeFavorito);
+
 
 module.exports = router;
 
