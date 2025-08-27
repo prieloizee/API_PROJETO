@@ -1,5 +1,6 @@
-
-const mysql = require("mysql2");
+// connect.js
+const mysql = require("mysql2"); 
+require("dotenv-safe").config();
 
 const pool = mysql.createPool({
   connectionLimit: 10,

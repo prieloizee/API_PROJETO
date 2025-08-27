@@ -2,6 +2,7 @@ const router = require('express').Router();
 const verifyJWT = require("../services/verifyJWT");
 const usuarioController = require('../controllers/usuarioController');
 const estabelecimentosController = require('../controllers/estabelecimentoController');
+const avaliacaoController= require ('../controllers/avaliacaoController');
 
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
@@ -14,9 +15,22 @@ const estabelecimentosController = require('../controllers/estabelecimentoContro
 
  //rotas para estabelecimentoController
  router.get('/buscar', estabelecimentosController.buscarEstabelecimentos);
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=restaurant
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=park
- //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=2000&type=store
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=park
+ //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=store
 
+ router.get('/buscar/:id', estabelecimentosController.buscarPorId);
+ //http://localhost:3000/projeto_final/buscar/ ID
+
+
+
+//router avaliaçoes
+router.post("/avaliacao",verifyJWT,avaliacaoController.create);
+router.get("/:google_place_id",verifyJWT, avaliacaoController.listByPlace);
+router.put("/avaliacao",verifyJWT, avaliacaoController.update);
+router.delete("/:id_avaliacao",verifyJWT,avaliacaoController.delete);
+
+//http://localhost:3000/projeto_final/avaliacao
 
 module.exports = router;
+
