@@ -5,7 +5,7 @@ module.exports = class avaliacaoController {
   static async create(req, res) {
     const { id_usuario, google_place_id, comentario, nota } = req.body;
 
-    if (!id_usuario || !google_place_id || !comentario || nota === undefined) {
+    if (!id_usuario || !google_place_id || !comentario || nota ) {
       return res.status(400).json({
         error: "Campos obrigatórios: id_usuario, google_place_id, comentario, nota (1-5)",
       });

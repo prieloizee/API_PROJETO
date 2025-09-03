@@ -8,7 +8,7 @@ const avaliacaoController= require ('../controllers/avaliacaoController');
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
  router.post('/login', usuarioController.loginUsuario);
-
+ router.get("/user/:id", usuarioController.getUsuarioById);
  router.get('/user',verifyJWT, usuarioController.getAllUsers)
  router.delete("/user/:id", verifyJWT,usuarioController.deleteUser);
  router.put('/user', verifyJWT, usuarioController.updateUser);

@@ -28,6 +28,7 @@ CREATE TABLE `avaliacoes` (
   `id_usuario` int NOT NULL,
   `google_place_id` varchar(255) NOT NULL,
   `comentario` text NOT NULL,
+  `nota` TINYINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_avaliacao`),
   KEY `id_usuario` (`id_usuario`),
