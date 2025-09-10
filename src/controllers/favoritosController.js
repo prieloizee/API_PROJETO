@@ -4,7 +4,7 @@ module.exports = class FavoritosController {
 
   // Adicionar favorito
   static async adicionaFavorito(req, res) {
-    // Se veio do token, usa req.userId; se não, usa o id_usuario do corpo
+  
     const id_usuario = req.userId || req.body.id_usuario;
     const { google_place_id, nome_estabelecimento, endereco } = req.body;
 
