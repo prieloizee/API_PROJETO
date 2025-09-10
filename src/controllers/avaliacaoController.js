@@ -5,7 +5,7 @@ module.exports = class avaliacaoController {
   static async create(req, res) {
     const { id_usuario, google_place_id, comentario, nota } = req.body;
 
-    if (!id_usuario || !google_place_id || !comentario || nota ) {
+    if (!id_usuario || !google_place_id || !comentario || !nota ) {
       return res.status(400).json({
         error: "Campos obrigatórios: id_usuario, google_place_id, comentario, nota (1-5)",
       });
@@ -60,7 +60,7 @@ module.exports = class avaliacaoController {
       FROM avaliacoes
       WHERE google_place_id = ?
     `;
-
+    //.
     try {
       pool.query(query, [google_place_id], (err, results) => {
         if (err) return res.status(500).json({ error: err });
