@@ -1,213 +1,235 @@
-const connect = require("../db/connect");
+const connect = require("../db/connect").promise(); // mysql2/promise
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const validateUser = require("../services/validateUser");
 const validateCpf = require("../services/validateCpf");
-const bcrypt = require("bcrypt");
 
 const SALT_ROUNDS = 10;
 
-module.exports = class usuarioController {
+class UsuarioController {
   // Criar usuário
   static async createUsuario(req, res) {
-    const { nome, email, senha, cpf } = req.body;
-
-    const validationError = validateUser(req.body);
-    if (validationError) return res.status(400).json(validationError);
-
     try {
-      const cpfError = await validateCpf(cpf);
-      if (cpfError) return res.status(400).json(cpfError);
+      const { nome, email, senha, cpf } = req.body;
 
+      // Valida campos básicos
+      const validationError = validateUser({ nome, email, senha, cpf });
+      if (validationError)
+        return res.status(400).json({ success: false, ...validationError });
+
+      // Valida CPF
+      const cpfError = await validateCpf(cpf);
+      if (cpfError)
+        return res.status(400).json({ success: false, ...cpfError });
+
+      // Hash da senha
       const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
 
+      // Inserção no banco
       const query = `INSERT INTO usuario (nome, email, senha, cpf) VALUES (?, ?, ?, ?)`;
-      connect.query(query, [nome, email, hashedPassword, cpf], (err) => {
-        if (err) {
-          if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
-            return res.status(400).json({ error: "Email já cadastrado" });
-          }
-          console.log(err);
-          return res.status(500).json({ error: "Erro interno do servidor", err });
-        }
-        return res.status(201).json({ message: "Usuário criado com sucesso" });
-      });
-    } catch (error) {
-      return res.status(500).json({ error });
+      await connect.execute(query, [nome, email, hashedPassword, cpf]);
+
+      return res
+        .status(201)
+        .json({ success: true, message: "Usuário criado com sucesso" });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res
+          .status(400)
+          .json({ success: false, error: "Email ou CPF já cadastrado" });
+      }
+      console.error(err);
+      return res
+        .status(500)
+        .json({ success: false, error: "Erro interno do servidor" });
     }
   }
 
-  // Buscar todos os usuários
+  // Obter todos os usuários (com paginação opcional)
   static async getAllUsers(req, res) {
     const query = `SELECT * FROM usuario`;
-
+  
     try {
-      connect.query(query, function (err, results) {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ error: "Erro interno do servidor" });
-        }
-
-        const users = results.map((user) => {
-          delete user.senha;
-          return user;
-        });
-
-        return res.status(200).json({ message: "Obtendo todos os usuários", users });
+      const [results] = await connect.execute(query); // <- aqui não tem callback
+  
+      const users = results.map((user) => {
+        delete user.senha;
+        return user;
       });
+  
+      return res
+        .status(200)
+        .json({ message: "Obtendo todos os usuários", users });
     } catch (error) {
       console.error("Erro ao executar a consulta:", error);
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+  
+
 
   // Atualizar usuário
   static async updateUser(req, res) {
-    const { cpf, email, senha, nome, id } = req.body;
-
-    const validationError = validateUser(req.body);
-    if (validationError) return res.status(400).json(validationError);
-
     try {
+      const { id, nome, email, senha, cpf } = req.body;
+
+      const validationError = validateUser({ nome, email, senha, cpf });
+      if (validationError)
+        return res.status(400).json({ success: false, ...validationError });
+
       const cpfError = await validateCpf(cpf, id);
-      if (cpfError) return res.status(400).json(cpfError);
+      if (cpfError)
+        return res.status(400).json({ success: false, ...cpfError });
 
       const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
 
-      const query = "UPDATE usuario SET nome = ?, email = ?, senha = ?, cpf = ? WHERE id_usuario = ?";
-      connect.query(query, [nome, email, hashedPassword, cpf, id], (err, results) => {
-        if (err) {
-          if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
-            return res.status(400).json({ error: "Email já cadastrado" });
-          }
-          return res.status(500).json({ error: "Erro interno do servidor", err });
-        }
+      const query =
+        "UPDATE usuario SET nome = ?, email = ?, senha = ?, cpf = ? WHERE id_usuario = ?";
+      const [result] = await connect.execute(query, [
+        nome,
+        email,
+        hashedPassword,
+        cpf,
+        id,
+      ]);
 
-        if (results.affectedRows === 0) {
-          return res.status(404).json({ error: "Usuário não encontrado" });
-        }
+      if (result.affectedRows === 0)
+        return res
+          .status(404)
+          .json({ success: false, error: "Usuário não encontrado" });
 
-        return res.status(200).json({ message: "Usuário atualizado com sucesso" });
-      });
-    } catch (error) {
-      return res.status(500).json({ error });
+      return res
+        .status(200)
+        .json({ success: true, message: "Usuário atualizado com sucesso" });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res
+          .status(400)
+          .json({ success: false, error: "Email ou CPF já cadastrado" });
+      }
+      console.error(err);
+      return res
+        .status(500)
+        .json({ success: false, error: "Erro interno do servidor" });
     }
   }
 
   // Deletar usuário
   static async deleteUser(req, res) {
-    const userId = req.params.id;
-    const query = `DELETE FROM usuario WHERE id_usuario = ?`;
-
     try {
-      connect.query(query, [userId], function (err, results) {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ error: "Erro interno do servidor" });
-        }
+      const { id } = req.params;
+      const query = "DELETE FROM usuario WHERE id_usuario = ?";
+      const [result] = await connect.execute(query, [id]);
 
-        if (results.affectedRows === 0) {
-          return res.status(404).json({ error: "Usuário não encontrado" });
-        }
+      if (result.affectedRows === 0)
+        return res
+          .status(404)
+          .json({ success: false, error: "Usuário não encontrado" });
 
-        return res.status(200).json({ message: "Usuário excluído com ID: " + userId });
-      });
-    } catch (error) {
-      console.error("Erro ao executar a consulta:", error);
-      return res.status(500).json({ error: "Erro interno do servidor" });
+      return res
+        .status(200)
+        .json({ success: true, message: `Usuário excluído com ID: ${id}` });
+    } catch (err) {
+      console.error(err);
+      return res
+        .status(500)
+        .json({ success: false, error: "Erro interno do servidor" });
     }
   }
 
   // Login
   static async loginUsuario(req, res) {
-    const { email, senha } = req.body;
-
-    if (!email || !senha) {
-      return res.status(400).json({ error: "Email e senha são obrigatórios" });
-    }
-
-    const query = `SELECT * FROM usuario WHERE email = ?`;
-
     try {
-      connect.query(query, [email], (err, results) => {
-        if (err) {
-          console.error("Erro ao executar a consulta:", err);
-          return res.status(500).json({ error: "Erro interno do servidor" });
-        }
+      const { email, senha } = req.body;
+      if (!email || !senha)
+        return res
+          .status(400)
+          .json({ success: false, error: "Email e senha obrigatórios" });
 
-        if (results.length === 0) {
-          return res.status(401).json({ error: "Usuário não encontrado" });
-        }
+      const [rows] = await connect.execute(
+        "SELECT * FROM usuario WHERE email = ?",
+        [email]
+      );
+      if (rows.length === 0)
+        return res
+          .status(401)
+          .json({ success: false, error: "Usuário não encontrado" });
 
-        const user = results[0];
-        const senhaOK = bcrypt.compareSync(senha, user.senha);
+      const user = rows[0];
+      const senhaOK = await bcrypt.compare(senha, user.senha);
+      if (!senhaOK)
+        return res
+          .status(401)
+          .json({ success: false, error: "Senha incorreta" });
 
-        if (!senhaOK) {
-          return res.status(401).json({ error: "Senha incorreta" });
-        }
-
-        const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
-        delete user.senha;
-
-        return res.status(200).json({ message: "Login bem-sucedido", user, token });
+      const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, {
+        expiresIn: "1h",
       });
-    } catch (error) {
-      console.error("Erro ao executar a consulta:", error);
-      return res.status(500).json({ error: "Erro interno do servidor" });
+      delete user.senha;
+      delete user.imagem;
+      delete user.tipo_imagem;
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Login bem-sucedido", user, token });
+    } catch (err) {
+      console.error(err);
+      return res
+        .status(500)
+        .json({ success: false, error: "Erro interno do servidor" });
     }
   }
-  static async uploadImagemPerfil(req, res) {
-    try {
-      const id_usuario = req.user.id_usuario; // assumindo JWT para pegar o usuário
-      if (!req.file) {
-        return res.status(400).json({ message: "Nenhuma imagem enviada" });
+    // Upload de imagem de perfil
+    static async uploadImagemPerfil(req, res) {
+      try {
+        const id_usuario = req.user.id_usuario; // assume JWT
+        if (!req.file) {
+          return res.status(400).json({ success: false, message: "Nenhuma imagem enviada" });
+        }
+  
+        const imagem = req.file.buffer;
+        const tipoImagem = req.file.mimetype;
+  
+        // Verificação de tipo (apenas jpeg e png)
+        if (!["image/jpeg", "image/png"].includes(tipoImagem)) {
+          return res.status(400).json({ success: false, message: "Formato inválido. Use JPEG ou PNG" });
+        }
+  
+        // Limite de tamanho (2MB)
+        if (req.file.size > 2 * 1024 * 1024) {
+          return res.status(400).json({ success: false, message: "Imagem muito grande (máx: 2MB)" });
+        }
+  
+        // Atualiza no banco
+        const query = "UPDATE usuario SET imagem = ?, tipo_imagem = ? WHERE id_usuario = ?";
+        connect.query(query, [imagem, tipoImagem, id_usuario], (err) => {
+          if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, message: "Erro ao atualizar imagem" });
+          }
+          return res.status(200).json({ success: true, message: "Imagem atualizada com sucesso" });
+        });
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Erro interno no servidor" });
       }
-
-      const imagem = req.file.buffer;
-      const tipoImagem = req.file.mimetype;
-
-      // Verificação de tipo (apenas jpeg e png)
-      if (!['image/jpeg', 'image/png'].includes(tipoImagem)) {
-        return res.status(400).json({ message: "Formato inválido. Use JPEG ou PNG" });
-      }
-
-      // Limite de tamanho (2MB)
-      if (req.file.size > 2 * 1024 * 1024) {
-        return res.status(400).json({ message: "Imagem muito grande (máx: 2MB)" });
-      }
-
-      // Atualiza no banco
-      await pool.query(
-        `UPDATE usuarios SET imagem = ?, tipo_imagem = ? WHERE id_usuario = ?`,
-        [imagem, tipoImagem, id_usuario]
-      );
-
-      return res.status(200).json({ message: "Imagem atualizada com sucesso" });
-    } catch (error) {
-      console.error("Erro ao fazer upload:", error);
-      return res.status(500).json({ message: "Erro interno no servidor" });
     }
-  }
-
-  // Obter imagem do perfil
-  static async getImagemPerfil(req, res) {
-    try {
+  
+    // Obter imagem de perfil
+    static async getImagemPerfil(req, res) {
       const id_usuario = req.params.id;
-
-      const [rows] = await pool.query(
-        `SELECT imagem, tipo_imagem FROM usuarios WHERE id_usuario = ?`,
-        [id_usuario]
-      );
-
-      if (!rows.length || !rows[0].imagem) {
-        return res.status(404).send("Imagem não encontrada");
-      }
-
-      res.set("Content-Type", rows[0].tipo_imagem || "image/jpeg");
-      res.send(rows[0].imagem);
-    } catch (error) {
-      console.error("Erro ao buscar imagem:", error);
-      return res.status(500).json({ message: "Erro interno no servidor" });
+      const query = "SELECT imagem, tipo_imagem FROM usuario WHERE id_usuario = ?";
+  
+      connect.query(query, [id_usuario], (err, results) => {
+        if (err || results.length === 0 || !results[0].imagem) {
+          return res.status(404).send("Imagem não encontrada");
+        }
+  
+        res.set("Content-Type", results[0].tipo_imagem || "image/jpeg");
+        res.send(results[0].imagem);
+      });
     }
-  }
+  
+}
 
-};
+module.exports = UsuarioController;
