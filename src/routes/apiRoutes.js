@@ -10,7 +10,7 @@ const avaliacaoController= require ('../controllers/avaliacaoController');
  router.post('/login', usuarioController.loginUsuario);
 
  router.get('/user',verifyJWT, usuarioController.getAllUsers)
- router.delete("/user/:id", verifyJWT,usuarioController.deleteUser);// deu certo
+ router.delete("/user/:id", verifyJWT,usuarioController.deleteUser);
  router.put('/user', verifyJWT, usuarioController.updateUser);
  
 
