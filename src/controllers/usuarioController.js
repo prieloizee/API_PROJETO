@@ -1,4 +1,4 @@
-const connect = require("../db/connect").promise(); // mysql2/promise
+const connect = require("../db/connect").promise(); 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const validateUser = require("../services/validateUser");
