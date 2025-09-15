@@ -9,7 +9,12 @@ const SALT_ROUNDS = 10;
 module.exports = class usuarioController {
   // Criar usuário
   static async createUsuario(req, res) {
-    const { nome, email, senha, cpf } = req.body;
+    const { nome, email, senha, confirmarSenha, cpf } = req.body;
+
+    // validar senha e confirmação
+    if (senha !== confirmarSenha) {
+      return res.status(400).json({ error: "As senhas não coincidem" });
+    }
 
     const validationError = validateUser(req.body);
     if (validationError) return res.status(400).json(validationError);
@@ -26,12 +31,15 @@ module.exports = class usuarioController {
           if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
             return res.status(400).json({ error: "Email já cadastrado" });
           }
-          console.log(err);
+          console.error(err);
           return res.status(500).json({ error: "Erro interno do servidor", err });
         }
+
+        console.log(`Usuário criado: ${email}`);
         return res.status(201).json({ message: "Usuário criado com sucesso" });
       });
     } catch (error) {
+      console.error(error);
       return res.status(500).json({ error });
     }
   }
@@ -52,6 +60,7 @@ module.exports = class usuarioController {
           return user;
         });
 
+        console.log("Todos os usuários obtidos");
         return res.status(200).json({ message: "Obtendo todos os usuários", users });
       });
     } catch (error) {
@@ -79,6 +88,7 @@ module.exports = class usuarioController {
         const user = results[0];
         delete user.senha; // não expor senha
 
+        console.log(`Usuário encontrado: ID ${userId}`);
         return res.status(200).json({ message: "Usuário encontrado", user });
       });
     } catch (error) {
@@ -89,7 +99,12 @@ module.exports = class usuarioController {
 
   // Atualizar usuário
   static async updateUser(req, res) {
-    const { cpf, email, senha, nome, id } = req.body;
+    const { cpf, email, senha, confirmarSenha, nome, id } = req.body;
+
+    // validar senha e confirmação
+    if (senha !== confirmarSenha) {
+      return res.status(400).json({ error: "As senhas não coincidem" });
+    }
 
     const validationError = validateUser(req.body);
     if (validationError) return res.status(400).json(validationError);
@@ -106,6 +121,7 @@ module.exports = class usuarioController {
           if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
             return res.status(400).json({ error: "Email já cadastrado" });
           }
+          console.error(err);
           return res.status(500).json({ error: "Erro interno do servidor", err });
         }
 
@@ -113,9 +129,11 @@ module.exports = class usuarioController {
           return res.status(404).json({ error: "Usuário não encontrado" });
         }
 
+        console.log(`Usuário atualizado: ID ${id}`);
         return res.status(200).json({ message: "Usuário atualizado com sucesso" });
       });
     } catch (error) {
+      console.error(error);
       return res.status(500).json({ error });
     }
   }
@@ -136,6 +154,7 @@ module.exports = class usuarioController {
           return res.status(404).json({ error: "Usuário não encontrado" });
         }
 
+        console.log(`Usuário deletado: ID ${userId}`);
         return res.status(200).json({ message: "Usuário excluído com ID: " + userId });
       });
     } catch (error) {
@@ -175,6 +194,7 @@ module.exports = class usuarioController {
         const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
         delete user.senha;
 
+        console.log(`Login realizado: ${email}`);
         return res.status(200).json({ message: "Login bem-sucedido", user, token });
       });
     } catch (error) {
@@ -209,6 +229,7 @@ module.exports = class usuarioController {
         [imagem, tipoImagem, id_usuario]
       );
 
+      console.log(`Imagem atualizada: ID ${id_usuario}`);
       return res.status(200).json({ message: "Imagem atualizada com sucesso" });
     } catch (error) {
       console.error("Erro ao fazer upload:", error);
@@ -231,6 +252,7 @@ module.exports = class usuarioController {
       }
 
       res.set("Content-Type", rows[0].tipo_imagem || "image/jpeg");
+      console.log(`Imagem obtida: ID ${id_usuario}`);
       res.send(rows[0].imagem);
     } catch (error) {
       console.error("Erro ao buscar imagem:", error);

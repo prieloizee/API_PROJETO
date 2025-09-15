@@ -94,12 +94,7 @@ module.exports = class avaliacaoController {
         error: "Campos obrigatórios: id_avaliacao e (comentario ou nota)",
       });
     }
-
-    // Validar nota
-    if (nota !== undefined && (nota < 1 || nota > 5)) {
-      return res.status(400).json({ error: "A nota deve ser de 1 a 5" });
-    }
-
+    
     const fields = [];
     const values = [];
 
