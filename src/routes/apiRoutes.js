@@ -37,16 +37,13 @@ const favoritosController = require('../controllers/favoritosController');
 
 // Favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
-router.get("/favoritos", verifyJWT, favoritosController.listFavoritos);
-router.delete("/favoritos/:id_favorito", verifyJWT, favoritosController.removeFavorito);
 
+// Lista todos os favoritos do usuário logado
+router.get("/favoritos", verifyJWT, favoritosController.getFavoritos);
 
-//TESTE
-router.post('/favoritos/test/:id_usuario', favoritosController.adicionaFavorito);
-// Listar favoritos de um usuário específico (teste)
-router.get('/favoritos/test/:id_usuario', favoritosController.listFavoritos);
-// Remover favorito de um usuário específico (teste)
-router.delete('/favoritos/test/:id_usuario/:id_favorito', favoritosController.removeFavorito);
+// Remove favorito pelo google_place_id (passado no body)
+router.delete("/favoritos", verifyJWT, favoritosController.removeFavorito);
+
 
 
 module.exports = router;

@@ -35,8 +35,7 @@ module.exports = class FavoritosController {
   }
 
   // Listar favoritos do usuário
-  static async listFavoritos(req, res) {
-    // Primeiro tenta pegar do token, se não, dos params
+  static async getFavoritos(req, res) {
     const id_usuario = req.userId || req.params.id_usuario;
 
     if (!id_usuario) {
