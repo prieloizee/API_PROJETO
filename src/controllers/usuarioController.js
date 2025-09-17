@@ -190,7 +190,7 @@ class UsuarioController {
         const imagem = req.file.buffer;
         const tipoImagem = req.file.mimetype;
   
-        // Verificação de tipo (apenas jpeg e png)
+        // Verificação de tipo de imagem
         if (!["image/jpeg", "image/png"].includes(tipoImagem)) {
           return res.status(400).json({ success: false, message: "Formato inválido. Use JPEG ou PNG" });
         }

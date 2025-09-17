@@ -4,14 +4,13 @@ module.exports = class FavoritosController {
 
   // Adicionar favorito
   static async adicionaFavorito(req, res) {
-  
-    const id_usuario = req.userId || req.body.id_usuario;
+    const id_usuario = req.userId; // pega do JWT
     const { google_place_id, nome_estabelecimento, endereco } = req.body;
-
+  
     if (!id_usuario || !google_place_id) {
       return res.status(400).json({ message: "id_usuario e google_place_id são obrigatórios" });
     }
-
+  
     try {
       const query = `
         INSERT INTO favoritos (id_usuario, google_place_id, nome_estabelecimento, endereco)
@@ -23,16 +22,23 @@ module.exports = class FavoritosController {
         nome_estabelecimento || null,
         endereco || null
       ]);
-
+  
       return res.status(201).json({
         message: "Favorito adicionado com sucesso",
         id_favorito: result.insertId
       });
+  
     } catch (error) {
+      // Captura erro de duplicidade
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({ message: "Você já adicionou este estabelecimento aos favoritos" });
+      }
+      // Outros erros
       console.error("Erro ao adicionar favorito:", error);
       return res.status(500).json({ message: "Erro interno", error });
     }
   }
+  
 
   // Listar favoritos do usuário
   static async getFavoritos(req, res) {
@@ -60,25 +66,30 @@ module.exports = class FavoritosController {
 
   // Remover favorito
   static async removeFavorito(req, res) {
-    const { id_favorito } = req.params;
-    const id_usuario = req.userId || req.body.id_usuario;
-
+    const id_favorito = Number(req.params.id_favorito);
+    const id_usuario = req.userId;
+  
     if (!id_usuario) {
       return res.status(400).json({ message: "id_usuario é obrigatório" });
     }
-
+  
+    if (isNaN(id_favorito)) {
+      return res.status(400).json({ message: "ID inválido" });
+    }
+  
     try {
       const query = `DELETE FROM favoritos WHERE id_favorito = ? AND id_usuario = ?`;
       const [result] = await pool.query(query, [id_favorito, id_usuario]);
-
+  
       if (result.affectedRows === 0) {
         return res.status(404).json({ message: "Favorito não encontrado" });
       }
-
+  
       return res.status(200).json({ message: "Favorito removido com sucesso" });
     } catch (error) {
       console.error("Erro ao remover favorito:", error);
       return res.status(500).json({ message: "Erro interno", error });
     }
   }
+  
 };

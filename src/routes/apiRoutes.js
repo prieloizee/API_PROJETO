@@ -3,7 +3,7 @@ const verifyJWT = require("../services/verifyJWT");
 const usuarioController = require('../controllers/usuarioController');
 const estabelecimentosController = require('../controllers/estabelecimentoController');
 const avaliacaoController= require ('../controllers/avaliacaoController');
-
+const favoritosController = require('../controllers/favoritosController');
 
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
@@ -27,22 +27,22 @@ const avaliacaoController= require ('../controllers/avaliacaoController');
 
 //router avaliaçoes
 router.post("/avaliacao",verifyJWT,avaliacaoController.create);
-router.get("/:google_place_id", avaliacaoController.listByPlace);
+router.get("avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao",verifyJWT, avaliacaoController.update);
 router.delete("/:id_avaliacao",verifyJWT,avaliacaoController.delete);
 
 //http://localhost:3000/projeto_final/avaliacao
 
-const favoritosController = require('../controllers/favoritosController');
+
 
 // Favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
-
 // Lista todos os favoritos do usuário logado
 router.get("/favoritos", verifyJWT, favoritosController.getFavoritos);
-
 // Remove favorito pelo google_place_id (passado no body)
-router.delete("/favoritos", verifyJWT, favoritosController.removeFavorito);
+// Para remover favorito
+router.delete("/favoritos/:id_favorito", verifyJWT, favoritosController.removeFavorito);
+
 
 
 
