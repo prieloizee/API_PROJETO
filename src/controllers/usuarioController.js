@@ -1,4 +1,4 @@
-const connect = require("../db/connect").promise(); 
+const connect = require("../db/connect").promise();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const validateUser = require("../services/validateUser");
@@ -12,12 +12,12 @@ class UsuarioController {
     try {
       const { nome, email, senha, cpf } = req.body;
 
-      // Valida campos básicos
+      // Validação básica
       const validationError = validateUser({ nome, email, senha, cpf });
       if (validationError)
         return res.status(400).json({ success: false, ...validationError });
 
-      // Valida CPF
+      // Validação CPF
       const cpfError = await validateCpf(cpf);
       if (cpfError)
         return res.status(400).json({ success: false, ...cpfError });
@@ -45,110 +45,107 @@ class UsuarioController {
     }
   }
 
-  // Obter todos os usuários (com paginação opcional)
+  // Obter todos os usuários
   static async getAllUsers(req, res) {
-    const query = `SELECT * FROM usuario`;
-  
     try {
-      const [results] = await connect.execute(query); // <- aqui não tem callback
-  
+      const query = `SELECT * FROM usuario`;
+      const [results] = await connect.execute(query);
+
       const users = results.map((user) => {
         delete user.senha;
+        delete user.imagem;
+        delete user.tipo_imagem;
         return user;
       });
-  
+
       return res
         .status(200)
         .json({ message: "Obtendo todos os usuários", users });
     } catch (error) {
-      console.error("Erro ao executar a consulta:", error);
+      console.error(error);
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
-  
-
 
   // Buscar usuário por ID
   static async getUsuarioById(req, res) {
     const userId = req.params.id;
-    const query = `SELECT * FROM usuario WHERE id_usuario = ?`;
-
     try {
-      connect.query(query, [userId], (err, results) => {
-        if (err) {
-          console.error("Erro ao executar a consulta:", err);
-          return res.status(500).json({ error: "Erro interno do servidor" });
-        }
+      const query = `SELECT * FROM usuario WHERE id_usuario = ?`;
+      const [results] = await connect.execute(query, [userId]);
 
-        if (results.length === 0) {
-          return res.status(404).json({ error: "Usuário não encontrado" });
-        }
+      if (results.length === 0)
+        return res.status(404).json({ error: "Usuário não encontrado" });
 
-        const user = results[0];
-        delete user.senha; // não expor senha
+      const user = results[0];
+      delete user.senha;
+      delete user.imagem;
+      delete user.tipo_imagem;
 
-        console.log(`Usuário encontrado: ID ${userId}`);
-        return res.status(200).json({ message: "Usuário encontrado", user });
-      });
+      return res.status(200).json({ message: "Usuário encontrado", user });
     } catch (error) {
-      console.error("Erro ao executar a consulta:", error);
+      console.error(error);
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
 
-  // Atualizar usuário
-  // Atualizar usuário
-static async updateUser(req, res) {
-  try {
-    const { id } = req.params;
-    const { nome, email, cpf, senha } = req.body;
-
+  // Atualizar usuário (perfil + imagem juntos)
+  static async updateUserWithImage(req, res) {
+    const { nome, email, senha, cpf } = req.body;
+    const id_usuario = req.user.id; // pega do JWT
     const campos = [];
     const valores = [];
 
-    if (nome) {
-      campos.push("nome = ?");
-      valores.push(nome);
+    try {
+      // Valida CPF apenas se enviado
+      if (cpf) {
+        const cpfError = await validateCpf(cpf, id_usuario);
+        if (cpfError) return res.status(400).json(cpfError);
+      }
+
+      if (nome) {
+        campos.push("nome = ?");
+        valores.push(nome);
+      }
+      if (email) {
+        campos.push("email = ?");
+        valores.push(email);
+      }
+      if (cpf) {
+        campos.push("cpf = ?");
+        valores.push(cpf);
+      }
+      if (senha) {
+        const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+        campos.push("senha = ?");
+        valores.push(hashedPassword);
+      }
+      if (req.file) { // imagem opcional
+        campos.push("imagem = ?");
+        campos.push("tipo_imagem = ?");
+        valores.push(req.file.buffer, req.file.mimetype);
+      }
+
+      if (campos.length === 0) {
+        return res.status(400).json({ error: "Nenhum campo para atualizar" });
+      }
+
+      valores.push(id_usuario); // WHERE
+      const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+      const [result] = await connect.execute(query, valores);
+
+      if (result.affectedRows === 0)
+        return res.status(404).json({ error: "Usuário não encontrado" });
+
+      return res.status(200).json({ message: "Perfil atualizado com sucesso" });
+    } catch (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ error: "Email já cadastrado" });
+      }
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
     }
-
-    if (email) {
-      campos.push("email = ?");
-      valores.push(email);
-    }
-
-    if (cpf) {
-      campos.push("cpf = ?");
-      valores.push(cpf);
-    }
-
-    if (senha) {
-      const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-      campos.push("senha = ?");
-      valores.push(hashedPassword);
-    }
-
-    if (campos.length === 0) {
-      return res.status(400).json({ error: "Nenhum campo para atualizar" });
-    }
-
-    valores.push(id); // id para WHERE
-    const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
-
-    const [results] = await connect.execute(query, valores);
-
-    if (results.affectedRows === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado" });
-    }
-
-    return res.status(200).json({ message: "Usuário atualizado com sucesso" });
-
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Erro interno do servidor" });
   }
-}
-
-
 
   // Deletar usuário
   static async deleteUser(req, res) {
@@ -158,18 +155,14 @@ static async updateUser(req, res) {
       const [result] = await connect.execute(query, [id]);
 
       if (result.affectedRows === 0)
-        return res
-          .status(404)
-          .json({ success: false, error: "Usuário não encontrado" });
+        return res.status(404).json({ success: false, error: "Usuário não encontrado" });
 
       return res
         .status(200)
         .json({ success: true, message: `Usuário excluído com ID: ${id}` });
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ success: false, error: "Erro interno do servidor" });
+      return res.status(500).json({ success: false, error: "Erro interno do servidor" });
     }
   }
 
@@ -178,93 +171,46 @@ static async updateUser(req, res) {
     try {
       const { email, senha } = req.body;
       if (!email || !senha)
-        return res
-          .status(400)
-          .json({ success: false, error: "Email e senha obrigatórios" });
+        return res.status(400).json({ success: false, error: "Email e senha obrigatórios" });
 
-      const [rows] = await connect.execute(
-        "SELECT * FROM usuario WHERE email = ?",
-        [email]
-      );
+      const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
       if (rows.length === 0)
-        return res
-          .status(401)
-          .json({ success: false, error: "Usuário não encontrado" });
+        return res.status(401).json({ success: false, error: "Usuário não encontrado" });
 
       const user = rows[0];
       const senhaOK = await bcrypt.compare(senha, user.senha);
       if (!senhaOK)
-        return res
-          .status(401)
-          .json({ success: false, error: "Senha incorreta" });
+        return res.status(401).json({ success: false, error: "Senha incorreta" });
 
-      const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, {
-        expiresIn: "1h",
-      });
+      const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
       delete user.senha;
       delete user.imagem;
       delete user.tipo_imagem;
 
-      return res
-        .status(200)
-        .json({ success: true, message: "Login bem-sucedido", user, token });
+      return res.status(200).json({ success: true, message: "Login bem-sucedido", user, token });
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ success: false, error: "Erro interno do servidor" });
+      return res.status(500).json({ success: false, error: "Erro interno do servidor" });
     }
   }
-    // Upload de imagem de perfil
-    static async uploadImagemPerfil(req, res) {
-      try {
-        const id_usuario = req.user.id_usuario; // assume JWT
-        if (!req.file) {
-          return res.status(400).json({ success: false, message: "Nenhuma imagem enviada" });
-        }
-  
-        const imagem = req.file.buffer;
-        const tipoImagem = req.file.mimetype;
-  
-        // Verificação de tipo de imagem
-        if (!["image/jpeg", "image/png"].includes(tipoImagem)) {
-          return res.status(400).json({ success: false, message: "Formato inválido. Use JPEG ou PNG" });
-        }
-  
-        // Limite de tamanho (2MB)
-        if (req.file.size > 2 * 1024 * 1024) {
-          return res.status(400).json({ success: false, message: "Imagem muito grande (máx: 2MB)" });
-        }
-  
-        // Atualiza no banco
-        const query = "UPDATE usuario SET imagem = ?, tipo_imagem = ? WHERE id_usuario = ?";
-        connect.query(query, [imagem, tipoImagem, id_usuario], (err) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).json({ success: false, message: "Erro ao atualizar imagem" });
-          }
-          return res.status(200).json({ success: true, message: "Imagem atualizada com sucesso" });
-        });
-      } catch (error) {
-        console.error(error);
-        return res.status(500).json({ success: false, message: "Erro interno no servidor" });
-      }
-    }
-  
-    // Obter imagem de perfil
-    static async getImagemPerfil(req, res) {
+
+  // Obter imagem de perfil
+  static async getImagemPerfil(req, res) {
+    try {
       const id_usuario = req.params.id;
       const query = "SELECT imagem, tipo_imagem FROM usuario WHERE id_usuario = ?";
-  
-      connect.query(query, [id_usuario], (err, results) => {
-        if (err || results.length === 0 || !results[0].imagem) {
-          return res.status(404).send("Imagem não encontrada");
-        }
-  
-        res.set("Content-Type", results[0].tipo_imagem || "image/jpeg");
-        res.send(results[0].imagem);
-      });
+      const [results] = await connect.execute(query, [id_usuario]);
+
+      if (!results.length || !results[0].imagem)
+        return res.status(404).send("Imagem não encontrada");
+
+      res.set("Content-Type", results[0].tipo_imagem || "image/jpeg");
+      res.send(results[0].imagem);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Erro interno no servidor" });
     }
   }
+}
 
 module.exports = UsuarioController;
