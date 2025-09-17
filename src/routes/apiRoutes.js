@@ -8,13 +8,13 @@ const favoritosController = require('../controllers/favoritosController');
 //rotas userController
  router.post('/user', usuarioController.createUsuario);
  router.post('/login', usuarioController.loginUsuario);
-
+ router.get("/user/:id", usuarioController.getUsuarioById);
  router.get('/user',verifyJWT, usuarioController.getAllUsers)
  router.delete("/user/:id", verifyJWT,usuarioController.deleteUser);
  router.put('/user', verifyJWT, usuarioController.updateUser);
  
 
- //rotas para estabelecimentoController
+ //rotas para estabelecimento
  router.get('/buscar', estabelecimentosController.buscarEstabelecimentos);
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=park

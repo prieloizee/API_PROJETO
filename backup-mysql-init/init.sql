@@ -4,7 +4,7 @@ USE `projeto_final`;
 --
 -- Host: localhost    Database: projeto_final
 -- ------------------------------------------------------
--- Server version	8.0.36
+-- Server version 8.0.36
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;

@@ -68,51 +68,87 @@ class UsuarioController {
   
 
 
-  // Atualizar usuário
-  static async updateUser(req, res) {
+  // Buscar usuário por ID
+  static async getUsuarioById(req, res) {
+    const userId = req.params.id;
+    const query = `SELECT * FROM usuario WHERE id_usuario = ?`;
+
     try {
-      const { id, nome, email, senha, cpf } = req.body;
+      connect.query(query, [userId], (err, results) => {
+        if (err) {
+          console.error("Erro ao executar a consulta:", err);
+          return res.status(500).json({ error: "Erro interno do servidor" });
+        }
 
-      const validationError = validateUser({ nome, email, senha, cpf });
-      if (validationError)
-        return res.status(400).json({ success: false, ...validationError });
+        if (results.length === 0) {
+          return res.status(404).json({ error: "Usuário não encontrado" });
+        }
 
-      const cpfError = await validateCpf(cpf, id);
-      if (cpfError)
-        return res.status(400).json({ success: false, ...cpfError });
+        const user = results[0];
+        delete user.senha; // não expor senha
 
-      const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-
-      const query =
-        "UPDATE usuario SET nome = ?, email = ?, senha = ?, cpf = ? WHERE id_usuario = ?";
-      const [result] = await connect.execute(query, [
-        nome,
-        email,
-        hashedPassword,
-        cpf,
-        id,
-      ]);
-
-      if (result.affectedRows === 0)
-        return res
-          .status(404)
-          .json({ success: false, error: "Usuário não encontrado" });
-
-      return res
-        .status(200)
-        .json({ success: true, message: "Usuário atualizado com sucesso" });
-    } catch (err) {
-      if (err.code === "ER_DUP_ENTRY") {
-        return res
-          .status(400)
-          .json({ success: false, error: "Email ou CPF já cadastrado" });
-      }
-      console.error(err);
-      return res
-        .status(500)
-        .json({ success: false, error: "Erro interno do servidor" });
+        console.log(`Usuário encontrado: ID ${userId}`);
+        return res.status(200).json({ message: "Usuário encontrado", user });
+      });
+    } catch (error) {
+      console.error("Erro ao executar a consulta:", error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+
+  // Atualizar usuário
+  // Atualizar usuário
+static async updateUser(req, res) {
+  try {
+    const { id } = req.params;
+    const { nome, email, cpf, senha } = req.body;
+
+    const campos = [];
+    const valores = [];
+
+    if (nome) {
+      campos.push("nome = ?");
+      valores.push(nome);
+    }
+
+    if (email) {
+      campos.push("email = ?");
+      valores.push(email);
+    }
+
+    if (cpf) {
+      campos.push("cpf = ?");
+      valores.push(cpf);
+    }
+
+    if (senha) {
+      const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+      campos.push("senha = ?");
+      valores.push(hashedPassword);
+    }
+
+    if (campos.length === 0) {
+      return res.status(400).json({ error: "Nenhum campo para atualizar" });
+    }
+
+    valores.push(id); // id para WHERE
+    const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+
+    const [results] = await connect.execute(query, valores);
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+}
+
+
 
   // Deletar usuário
   static async deleteUser(req, res) {
@@ -229,7 +265,6 @@ class UsuarioController {
         res.send(results[0].imagem);
       });
     }
-  
-}
+  }
 
 module.exports = UsuarioController;
