@@ -31,15 +31,11 @@ router.get("avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao",verifyJWT, avaliacaoController.update);
 router.delete("/:id_avaliacao",verifyJWT,avaliacaoController.delete);
 
-//http://localhost:3000/projeto_final/avaliacao
-
-
 
 // Favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
 // Lista todos os favoritos do usuário logado
 router.get("/favoritos", verifyJWT, favoritosController.getFavoritos);
-// Remove favorito pelo google_place_id (passado no body)
 // Para remover favorito
 router.delete("/favoritos/:id_favorito", verifyJWT, favoritosController.removeFavorito);
 
