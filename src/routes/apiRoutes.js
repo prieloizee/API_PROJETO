@@ -14,7 +14,7 @@ const avaliacaoController= require ('../controllers/avaliacaoController');
  router.put('/user', verifyJWT, usuarioController.updateUser);
  
 
- //rotas para estabelecimentoController
+ //rotas para estabelecimento
  router.get('/buscar', estabelecimentosController.buscarEstabelecimentos);
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
  //http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=park
