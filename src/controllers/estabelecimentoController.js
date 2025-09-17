@@ -25,7 +25,7 @@ module.exports = class EstabelecimentoController {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
           const enderecoCompleto = detalhes?.formatted_address || est.vicinity;
 
-          if (!enderecoCompleto.toLowerCase().includes("franca")) continue;
+          //if (!enderecoCompleto.toLowerCase().includes("franca")) continue;
 
           // Buscar avaliações
           const [avaliacoes] = await pool.query(

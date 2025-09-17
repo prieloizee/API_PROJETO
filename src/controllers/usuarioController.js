@@ -99,44 +99,72 @@ module.exports = class usuarioController {
 
   // Atualizar usuário
   static async updateUser(req, res) {
-    const { cpf, email, senha, confirmarSenha, nome, id } = req.body;
+  const { id, nome, email, senha, cpf } = req.body;
 
-    // validar senha e confirmação
-    if (senha !== confirmarSenha) {
-      return res.status(400).json({ error: "As senhas não coincidem" });
-    }
+  if (!id) {
+    return res.status(400).json({ error: "ID do usuário é obrigatório" });
+  }
 
-    const validationError = validateUser(req.body);
-    if (validationError) return res.status(400).json(validationError);
-
-    try {
+  try {
+    // Valida CPF apenas se foi enviado
+    if (cpf) {
       const cpfError = await validateCpf(cpf, id);
       if (cpfError) return res.status(400).json(cpfError);
-
-      const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-
-      const query = "UPDATE usuario SET nome = ?, email = ?, senha = ?, cpf = ? WHERE id_usuario = ?";
-      connect.query(query, [nome, email, hashedPassword, cpf, id], (err, results) => {
-        if (err) {
-          if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
-            return res.status(400).json({ error: "Email já cadastrado" });
-          }
-          console.error(err);
-          return res.status(500).json({ error: "Erro interno do servidor", err });
-        }
-
-        if (results.affectedRows === 0) {
-          return res.status(404).json({ error: "Usuário não encontrado" });
-        }
-
-        console.log(`Usuário atualizado: ID ${id}`);
-        return res.status(200).json({ message: "Usuário atualizado com sucesso" });
-      });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error });
     }
+
+    // Monta os campos que serão atualizados
+    const campos = [];
+    const valores = [];
+
+    if (nome) {
+      campos.push("nome = ?");
+      valores.push(nome);
+    }
+
+    if (email) {
+      campos.push("email = ?");
+      valores.push(email);
+    }
+
+    if (cpf) {
+      campos.push("cpf = ?");
+      valores.push(cpf);
+    }
+
+    if (senha) {
+      // só atualiza senha se foi fornecida
+      const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+      campos.push("senha = ?");
+      valores.push(hashedPassword);
+    }
+
+    if (campos.length === 0) {
+      return res.status(400).json({ error: "Nenhum campo para atualizar" });
+    }
+
+    valores.push(id); // id para WHERE
+    const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+
+    connect.query(query, valores, (err, results) => {
+      if (err) {
+        if (err.code === "ER_DUP_ENTRY" && err.message.includes("email")) {
+          return res.status(400).json({ error: "Email já cadastrado" });
+        }
+        return res.status(500).json({ error: "Erro interno do servidor", err });
+      }
+
+      if (results.affectedRows === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+    });
+
+  } catch (error) {
+    return res.status(500).json({ error });
   }
+}
+
 
   // Deletar usuário
   static async deleteUser(req, res) {
