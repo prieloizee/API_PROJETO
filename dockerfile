@@ -6,7 +6,7 @@ FROM node:alpine
 
 ##docker-compose down -v
 
-##AIzaSyAKd6fsBKD9gKGvHPMxHTWOdb84rLwOl4M
+##AIzaSyD3aUrLEdn3S3HUg7SP9xwQoKNxL4AcCfw
 
 ## Define o local onde o app irá ficar no disco do container
 ## O caminho o Dev quem escolhe
