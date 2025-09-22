@@ -18,7 +18,7 @@ function verifyJWT(req, res, next) {
       return res.status(403).json({ auth: false, message: "Falha na autenticação do token" });
     }
 
-    req.userId = decoded.id;
+    req.user = { id_usuario: decoded.id_usuario };
     next();
   });
 }

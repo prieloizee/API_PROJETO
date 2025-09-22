@@ -89,63 +89,59 @@ class UsuarioController {
     }
   }
 
-  // Atualizar usuário (perfil + imagem juntos)
   static async updateUserWithImage(req, res) {
-    const { nome, email, senha, cpf } = req.body;
-    const id_usuario = req.user.id; // pega do JWT
+    const { nome, senha } = req.body;
+    const id_usuario = req.user.id_usuario; // pega do JWT
     const campos = [];
     const valores = [];
-
+  
     try {
-      // Valida CPF apenas se enviado
-      if (cpf) {
-        const cpfError = await validateCpf(cpf, id_usuario);
-        if (cpfError) return res.status(400).json(cpfError);
-      }
-
+      // Atualiza nome se enviado
       if (nome) {
         campos.push("nome = ?");
         valores.push(nome);
       }
-      if (email) {
-        campos.push("email = ?");
-        valores.push(email);
-      }
-      if (cpf) {
-        campos.push("cpf = ?");
-        valores.push(cpf);
-      }
+  
+      // Atualiza senha se enviada
       if (senha) {
         const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
         campos.push("senha = ?");
         valores.push(hashedPassword);
       }
-      if (req.file) { // imagem opcional
+  
+      // Atualiza imagem se enviada
+      if (req.file) {
+        const imagem = req.file.buffer;
+        const tipoImagem = req.file.mimetype;
+  
         campos.push("imagem = ?");
+        valores.push(imagem);
+  
         campos.push("tipo_imagem = ?");
-        valores.push(req.file.buffer, req.file.mimetype);
+        valores.push(tipoImagem);
       }
-
+  
       if (campos.length === 0) {
         return res.status(400).json({ error: "Nenhum campo para atualizar" });
       }
-
+  
       valores.push(id_usuario); // WHERE
       const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+  
       const [result] = await connect.execute(query, valores);
-
-      if (result.affectedRows === 0)
+  
+      if (result.affectedRows === 0) {
         return res.status(404).json({ error: "Usuário não encontrado" });
-
+      }
+  
       return res.status(200).json({ message: "Perfil atualizado com sucesso" });
     } catch (err) {
-      if (err.code === "ER_DUP_ENTRY") {
-        return res.status(400).json({ error: "Email já cadastrado" });
-      }
-      console.error(err);
+      console.error("Erro ao atualizar usuário:", err);
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+  
+  
 
   // Deletar usuário
   static async deleteUser(req, res) {
@@ -170,29 +166,44 @@ class UsuarioController {
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
-      if (!email || !senha)
+      if (!email || !senha) {
         return res.status(400).json({ success: false, error: "Email e senha obrigatórios" });
-
+      }
+  
       const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
-      if (rows.length === 0)
+      if (rows.length === 0) {
         return res.status(401).json({ success: false, error: "Usuário não encontrado" });
-
+      }
+  
       const user = rows[0];
       const senhaOK = await bcrypt.compare(senha, user.senha);
-      if (!senhaOK)
+      if (!senhaOK) {
         return res.status(401).json({ success: false, error: "Senha incorreta" });
-
-      const token = jwt.sign({ id: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
+      }
+  
+      // Agora o token carrega id_usuario (igual ao banco e ao verifyJWT)
+      const token = jwt.sign(
+        { id_usuario: user.id_usuario },
+        process.env.SECRET,
+        { expiresIn: "1h" }
+      );
+  
       delete user.senha;
       delete user.imagem;
       delete user.tipo_imagem;
-
-      return res.status(200).json({ success: true, message: "Login bem-sucedido", user, token });
+  
+      return res.status(200).json({
+        success: true,
+        message: "Login bem-sucedido",
+        user,
+        token,
+      });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ success: false, error: "Erro interno do servidor" });
     }
   }
+  
 
   // Obter imagem de perfil
   static async getImagemPerfil(req, res) {
