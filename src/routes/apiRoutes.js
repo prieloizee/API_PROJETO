@@ -39,7 +39,7 @@ router.delete("/:id_avaliacao", verifyJWT, avaliacaoController.delete);
 // Favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
 // Lista todos os favoritos do usuário logado
-router.get("/favoritos", verifyJWT, favoritosController.getFavoritos);
+router.get("/favoritos/:id_usuario", verifyJWT, favoritosController.getFavoritos);
 // Para remover favorito
 router.delete(
   "/favoritos/:id_favorito",

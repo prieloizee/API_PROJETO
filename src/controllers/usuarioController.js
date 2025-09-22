@@ -94,6 +94,7 @@ class UsuarioController {
     const id_usuario = req.user.id_usuario; // pega do JWT
     const campos = [];
     const valores = [];
+    
   
     try {
       // Atualiza nome se enviado
