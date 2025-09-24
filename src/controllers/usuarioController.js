@@ -90,7 +90,7 @@ class UsuarioController {
   }
 
   static async updateUserWithImage(req, res) {
-    const { nome, senha } = req.body;
+    const { nome, senha, email } = req.body;
   
     if (!req.userId) {
       return res.status(401).json({ error: "Usuário não autenticado ou token inválido" });
@@ -103,7 +103,7 @@ class UsuarioController {
     try {
       // 1. Buscar dados atuais do usuário
       const [rows] = await connect.execute(
-        "SELECT nome, senha FROM usuario WHERE id_usuario = ?",
+        "SELECT nome, senha, email FROM usuario WHERE id_usuario = ?",
         [id_usuario]
       );
   
@@ -128,6 +128,15 @@ class UsuarioController {
           valores.push(hashedPassword);
         }
       }
+       // 6. Verifica se nao existe nenhum email duplicado
+       if (email && email !== usuarioAtual.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ error: "E-mail inválido" });
+        }
+        campos.push("email = ?");
+        valores.push(email);
+      }
   
       // 4. Atualiza imagem se veio no request (sempre que tiver req.file)
       if (req.file) {
@@ -143,6 +152,8 @@ class UsuarioController {
         return res.status(400).json({ error: "Nenhum campo para alterar" });
       }
   
+     
+
       // 6. Executa UPDATE
       valores.push(id_usuario); // para WHERE
       const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
