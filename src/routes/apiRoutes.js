@@ -4,14 +4,18 @@ const usuarioController = require("../controllers/usuarioController");
 const estabelecimentosController = require("../controllers/estabelecimentoController");
 const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
+const upload = require("../services/upload");
+
+
+
 
 //rotas userController
-router.post("/user", usuarioController.createUsuario);
+router.post("/user",upload.single("imagem"), usuarioController.createUsuario);
 router.post("/login", usuarioController.loginUsuario);
 router.get("/user/:id", usuarioController.getUsuarioById);
 router.get("/user", verifyJWT, usuarioController.getAllUsers);
 router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
-router.put("/user", verifyJWT, usuarioController.updateUserWithImage);
+router.put("/user", upload.single("imagem"),verifyJWT, usuarioController.updateUserWithImage);
 
 //rotas para estabelecimento
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
@@ -21,6 +25,8 @@ router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
 
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
 //http://localhost:3000/projeto_final/buscar/ ID
+
+
 
 //router avaliaçoes
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);
