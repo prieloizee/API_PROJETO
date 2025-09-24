@@ -91,44 +91,61 @@ class UsuarioController {
 
   static async updateUserWithImage(req, res) {
     const { nome, senha } = req.body;
-    const id_usuario = req.user.id_usuario; // pega do JWT
+  
+    if (!req.userId) {
+      return res.status(401).json({ error: "Usuário não autenticado ou token inválido" });
+    }
+  
+    const id_usuario = req.userId;
     const campos = [];
     const valores = [];
-    
   
     try {
-      // Atualiza nome se enviado
-      if (nome) {
+      // 1. Buscar dados atuais do usuário
+      const [rows] = await connect.execute(
+        "SELECT nome, senha FROM usuario WHERE id_usuario = ?",
+        [id_usuario]
+      );
+  
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+  
+      const usuarioAtual = rows[0];
+  
+      // 2. Atualiza nome se foi enviado e diferente do atual
+      if (nome && nome !== usuarioAtual.nome) {
         campos.push("nome = ?");
         valores.push(nome);
       }
   
-      // Atualiza senha se enviada
+      // 3. Atualiza senha se foi enviada e diferente da atual
       if (senha) {
-        const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-        campos.push("senha = ?");
-        valores.push(hashedPassword);
+        const senhaIgual = await bcrypt.compare(senha, usuarioAtual.senha);
+        if (!senhaIgual) {
+          const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+          campos.push("senha = ?");
+          valores.push(hashedPassword);
+        }
       }
   
-      // Atualiza imagem se enviada
+      // 4. Atualiza imagem se veio no request (sempre que tiver req.file)
       if (req.file) {
-        const imagem = req.file.buffer;
-        const tipoImagem = req.file.mimetype;
-  
         campos.push("imagem = ?");
-        valores.push(imagem);
+        valores.push(req.file.buffer);
   
         campos.push("tipo_imagem = ?");
-        valores.push(tipoImagem);
+        valores.push(req.file.mimetype);
       }
   
+      // 5. Se não tiver nenhum campo para alterar
       if (campos.length === 0) {
-        return res.status(400).json({ error: "Nenhum campo para atualizar" });
+        return res.status(400).json({ error: "Nenhum campo para alterar" });
       }
   
-      valores.push(id_usuario); // WHERE
+      // 6. Executa UPDATE
+      valores.push(id_usuario); // para WHERE
       const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
-  
       const [result] = await connect.execute(query, valores);
   
       if (result.affectedRows === 0) {
@@ -141,6 +158,7 @@ class UsuarioController {
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+  
   
   
 

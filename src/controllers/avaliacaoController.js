@@ -42,6 +42,33 @@ module.exports = class avaliacaoController {
       return res.status(500).json({ error });
     }
   }
+  
+  // Listar avaliações por usuário
+static async listByUser(req, res) {
+  const { id_usuario } = req.params;
+
+  const query = `
+    SELECT a.id_avaliacao, a.comentario, a.nota, a.google_place_id, a.created_at
+    FROM avaliacoes a
+    WHERE a.id_usuario = ?
+    ORDER BY a.created_at DESC
+  `;
+
+  try {
+    pool.query(query, [id_usuario], (err, results) => {
+      if (err) return res.status(500).json({ error: err });
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: "Nenhuma avaliação encontrada para este usuário" });
+      }
+
+      return res.status(200).json({ avaliacoes: results });
+    });
+  } catch (error) {
+    return res.status(500).json({ error });
+  }
+}
+
 
   // Listar avaliações por local (com nota e média das notas)
   static async listByPlace(req, res) {

@@ -20,6 +20,7 @@ router.put(
   upload.single("imagem"), // <- adiciona suporte a imagem
   usuarioController.updateUserWithImage
 );
+router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
 // rotas para estabelecimento
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
@@ -35,6 +36,8 @@ router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao", verifyJWT, avaliacaoController.update);
 router.delete("/:id_avaliacao", verifyJWT, avaliacaoController.delete);
+router.get("/avaliacoes/:id_usuario", avaliacaoController.listByUser);
+
 
 // Favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
