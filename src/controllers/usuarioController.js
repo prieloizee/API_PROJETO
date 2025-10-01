@@ -1,193 +1,37 @@
-const connect = require("../db/connect").promise();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const validateUser = require("../services/validateUser");
-const validateCpf = require("../services/validateCpf");
-
+const connect = require("../db/connect").promise();
 const SALT_ROUNDS = 10;
+const emailServices = require("../services/emailServices");
+
+//await emailServices.sendVerificationEmail(usuario.email, usuario.verificationCode);
 
 class UsuarioController {
   // Criar usuário
   static async createUsuario(req, res) {
     try {
-      const { nome, email, senha, cpf } = req.body;
+      const { nome, email, senha, confirmarSenha, cpf } = req.body;
 
-      // Validação básica
-      const validationError = validateUser({ nome, email, senha, cpf });
-      if (validationError)
-        return res.status(400).json({ success: false, ...validationError });
+      if (!nome || !email || !senha || !confirmarSenha || !cpf) {
+        return res.status(400).json({ error: "Todos os campos são obrigatórios" });
+      }
 
-      // Validação CPF
-      const cpfError = await validateCpf(cpf);
-      if (cpfError)
-        return res.status(400).json({ success: false, ...cpfError });
+      if (senha !== confirmarSenha) {
+        return res.status(400).json({ error: "As senhas não conferem" });
+      }
 
-      // Hash da senha
       const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
 
-      // Inserção no banco
       const query = `INSERT INTO usuario (nome, email, senha, cpf) VALUES (?, ?, ?, ?)`;
-      await connect.execute(query, [nome, email, hashedPassword, cpf]);
+      const [result] = await connect.execute(query, [nome, email, hashedPassword, cpf]);
 
-      return res
-        .status(201)
-        .json({ success: true, message: "Usuário criado com sucesso" });
+      return res.status(201).json({ message: "Usuário criado com sucesso", id_usuario: result.insertId });
     } catch (err) {
       if (err.code === "ER_DUP_ENTRY") {
-        return res
-          .status(400)
-          .json({ success: false, error: "Email ou CPF já cadastrado" });
+        return res.status(400).json({ error: "Email ou CPF já cadastrado" });
       }
       console.error(err);
-      return res
-        .status(500)
-        .json({ success: false, error: "Erro interno do servidor" });
-    }
-  }
-
-  // Obter todos os usuários
-  static async getAllUsers(req, res) {
-    try {
-      const query = `SELECT * FROM usuario`;
-      const [results] = await connect.execute(query);
-
-      const users = results.map((user) => {
-        delete user.senha;
-        delete user.imagem;
-        delete user.tipo_imagem;
-        return user;
-      });
-
-      return res
-        .status(200)
-        .json({ message: "Obtendo todos os usuários", users });
-    } catch (error) {
-      console.error(error);
       return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-
-  // Buscar usuário por ID
-  static async getUsuarioById(req, res) {
-    const userId = req.params.id;
-    try {
-      const query = `SELECT * FROM usuario WHERE id_usuario = ?`;
-      const [results] = await connect.execute(query, [userId]);
-
-      if (results.length === 0)
-        return res.status(404).json({ error: "Usuário não encontrado" });
-
-      const user = results[0];
-      delete user.senha;
-      delete user.imagem;
-      delete user.tipo_imagem;
-
-      return res.status(200).json({ message: "Usuário encontrado", user });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-
-  static async updateUserWithImage(req, res) {
-    const { nome, senha, email } = req.body;
-  
-    if (!req.userId) {
-      return res.status(401).json({ error: "Usuário não autenticado ou token inválido" });
-    }
-  
-    const id_usuario = req.userId;
-    const campos = [];
-    const valores = [];
-  
-    try {
-      // 1. Buscar dados atuais do usuário
-      const [rows] = await connect.execute(
-        "SELECT nome, senha, email FROM usuario WHERE id_usuario = ?",
-        [id_usuario]
-      );
-  
-      if (rows.length === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
-  
-      const usuarioAtual = rows[0];
-  
-      // 2. Atualiza nome se foi enviado e diferente do atual
-      if (nome && nome !== usuarioAtual.nome) {
-        campos.push("nome = ?");
-        valores.push(nome);
-      }
-  
-      // 3. Atualiza senha se foi enviada e diferente da atual
-      if (senha) {
-        const senhaIgual = await bcrypt.compare(senha, usuarioAtual.senha);
-        if (!senhaIgual) {
-          const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-          campos.push("senha = ?");
-          valores.push(hashedPassword);
-        }
-      }
-      //6. verifica se já tem email duplicado
-      if (email && email !== usuarioAtual.email) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          return res.status(400).json({ error: "E-mail inválido" });
-        }
-        campos.push("email = ?");
-        valores.push(email);
-      }
-  
-      // 4. Atualiza imagem se veio no request (sempre que tiver req.file)
-      if (req.file) {
-        campos.push("imagem = ?");
-        valores.push(req.file.buffer);
-  
-        campos.push("tipo_imagem = ?");
-        valores.push(req.file.mimetype);
-      }
-  
-      // 5. Se não tiver nenhum campo para alterar
-      if (campos.length === 0) {
-        return res.status(400).json({ error: "Nenhum campo para alterar" });
-      }
-
-
-      // 6. Executa UPDATE
-      valores.push(id_usuario); // para WHERE
-      const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
-      const [result] = await connect.execute(query, valores);
-  
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
-  
-      return res.status(200).json({ message: "Perfil atualizado com sucesso" });
-    } catch (err) {
-      console.error("Erro ao atualizar usuário:", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-  
-  
-  
-
-  // Deletar usuário
-  static async deleteUser(req, res) {
-    try {
-      const { id } = req.params;
-      const query = "DELETE FROM usuario WHERE id_usuario = ?";
-      const [result] = await connect.execute(query, [id]);
-
-      if (result.affectedRows === 0)
-        return res.status(404).json({ success: false, error: "Usuário não encontrado" });
-
-      return res
-        .status(200)
-        .json({ success: true, message: `Usuário excluído com ID: ${id}` });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ success: false, error: "Erro interno do servidor" });
     }
   }
 
@@ -195,60 +39,168 @@ class UsuarioController {
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
-      if (!email || !senha) {
-        return res.status(400).json({ success: false, error: "Email e senha obrigatórios" });
-      }
-  
+      if (!email || !senha) return res.status(400).json({ error: "Email e senha obrigatórios" });
+
       const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
-      if (rows.length === 0) {
-        return res.status(401).json({ success: false, error: "Usuário não encontrado" });
-      }
-  
+      if (rows.length === 0) return res.status(401).json({ error: "Usuário não encontrado" });
+
       const user = rows[0];
       const senhaOK = await bcrypt.compare(senha, user.senha);
-      if (!senhaOK) {
-        return res.status(401).json({ success: false, error: "Senha incorreta" });
-      }
-  
-      // Agora o token carrega id_usuario (igual ao banco e ao verifyJWT)
-      const token = jwt.sign(
-        { id_usuario: user.id_usuario },
-        process.env.SECRET,
-        { expiresIn: "1h" }
-      );
-  
+      if (!senhaOK) return res.status(401).json({ error: "Senha incorreta" });
+
+      const token = jwt.sign({ id_usuario: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
+
       delete user.senha;
       delete user.imagem;
       delete user.tipo_imagem;
-  
-      return res.status(200).json({
-        success: true,
-        message: "Login bem-sucedido",
-        user,
-        token,
-      });
+
+      return res.status(200).json({ message: "Login bem-sucedido", user, token });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ success: false, error: "Erro interno do servidor" });
+      return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
-  
 
-  // Obter imagem de perfil
-  static async getImagemPerfil(req, res) {
+  // Recuperação de senha
+  static async sendRecoveryCode(req, res) {
     try {
-      const id_usuario = req.params.id;
-      const query = "SELECT imagem, tipo_imagem FROM usuario WHERE id_usuario = ?";
-      const [results] = await connect.execute(query, [id_usuario]);
+      const { email } = req.body;
+      if (!email) return res.status(400).json({ error: "Email obrigatório" });
 
-      if (!results.length || !results[0].imagem)
-        return res.status(404).send("Imagem não encontrada");
+      const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
+      if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
 
-      res.set("Content-Type", results[0].tipo_imagem || "image/jpeg");
-      res.send(results[0].imagem);
+      const code = Math.floor(100000 + Math.random() * 900000);
+
+      // Salva código temporário no banco
+      const expiracao = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
+      await connect.execute(
+        "INSERT INTO temp_email_codes (email, code, tipo, expiracao) VALUES (?, ?, 'recuperacao', ?)",
+        [email, code, expiracao]
+      );
+
+      // Envia email com código
+      await emailServices.sendRecoveryEmail(email, code);
+
+      return res.status(200).json({ message: "Código de recuperação enviado por email" });
     } catch (err) {
       console.error(err);
-      return res.status(500).json({ message: "Erro interno no servidor" });
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  static async verifyRecoveryCode(req, res) {
+    try {
+      const { email, code } = req.body;
+      const [rows] = await connect.execute(
+        "SELECT * FROM temp_email_codes WHERE email = ? AND code = ? AND tipo = 'recuperacao' AND expiracao > NOW()",
+        [email, code]
+      );
+
+      if (rows.length === 0) return res.status(400).json({ error: "Código inválido ou expirado" });
+
+      return res.status(200).json({ message: "Código válido, você pode redefinir a senha" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  static async resetPassword(req, res) {
+    try {
+      const { email, code, novaSenha, confirmarSenha } = req.body;
+      if (!novaSenha || !confirmarSenha) return res.status(400).json({ error: "Preencha todas as senhas" });
+      if (novaSenha !== confirmarSenha) return res.status(400).json({ error: "As senhas não conferem" });
+
+      const [rows] = await connect.execute(
+        "SELECT * FROM temp_email_codes WHERE email = ? AND code = ? AND tipo = 'recuperacao' AND expiracao > NOW()",
+        [email, code]
+      );
+      if (rows.length === 0) return res.status(400).json({ error: "Código inválido ou expirado" });
+
+      const hashedPassword = await bcrypt.hash(novaSenha, SALT_ROUNDS);
+      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [hashedPassword, email]);
+      await connect.execute("DELETE FROM temp_email_codes WHERE email = ? AND tipo = 'recuperacao'", [email]);
+
+      return res.status(200).json({ message: "Senha redefinida com sucesso" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  // Obter usuário por ID
+  static async getUsuarioById(req, res) {
+    try {
+      const [rows] = await connect.execute(
+        "SELECT id_usuario, nome, email, cpf FROM usuario WHERE id_usuario = ?",
+        [req.params.id]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
+
+      return res.status(200).json(rows[0]);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  // Obter todos os usuários
+  static async getAllUsers(req, res) {
+    try {
+      const [rows] = await connect.execute("SELECT id_usuario, nome, email, cpf FROM usuario");
+      return res.status(200).json(rows);
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  // Atualizar usuário com imagem
+  static async updateUserWithImage(req, res) {
+    try {
+      const campos = [];
+      const valores = [];
+
+      if (req.body.nome) {
+        campos.push("nome = ?");
+        valores.push(req.body.nome);
+      }
+
+      if (req.body.senha) {
+        const hashed = await bcrypt.hash(req.body.senha, SALT_ROUNDS);
+        campos.push("senha = ?");
+        valores.push(hashed);
+      }
+
+      if (req.file) {
+        campos.push("imagem = ?", "tipo_imagem = ?");
+        valores.push(req.file.buffer, req.file.mimetype);
+      }
+
+      if (campos.length === 0) return res.status(400).json({ error: "Nenhum campo para atualizar" });
+
+      valores.push(req.userId);
+      const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+      await connect.execute(query, valores);
+
+      return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
+  // Deletar usuário
+  static async deleteUser(req, res) {
+    try {
+      const [result] = await connect.execute("DELETE FROM usuario WHERE id_usuario = ?", [req.params.id]);
+      if (result.affectedRows === 0) return res.status(404).json({ error: "Usuário não encontrado" });
+
+      return res.status(200).json({ message: "Usuário deletado com sucesso" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
 }
