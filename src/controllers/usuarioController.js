@@ -90,7 +90,7 @@ class UsuarioController {
   }
 
   static async updateUserWithImage(req, res) {
-    const { nome, senha, email } = req.body;
+    const { nome, email, senha_atual, nova_senha } = req.body;
   
     if (!req.userId) {
       return res.status(401).json({ error: "Usuário não autenticado ou token inválido" });
@@ -113,23 +113,38 @@ class UsuarioController {
   
       const usuarioAtual = rows[0];
   
-      // 2. Atualiza nome se foi enviado e diferente do atual
+      // 2. Atualiza nome
       if (nome && nome !== usuarioAtual.nome) {
         campos.push("nome = ?");
         valores.push(nome);
       }
   
-      // 3. Atualiza senha se foi enviada e diferente da atual
-      if (senha) {
-        const senhaIgual = await bcrypt.compare(senha, usuarioAtual.senha);
-        if (!senhaIgual) {
-          const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
-          campos.push("senha = ?");
-          valores.push(hashedPassword);
+      // 3. Atualiza senha
+      if (senha_atual?.trim() && nova_senha?.trim()) {
+        // verifica se a senha atual confere
+        const senhaValida = await bcrypt.compare(senha_atual, usuarioAtual.senha);
+        if (!senhaValida) {
+          return res.status(400).json({ error: "Senha atual incorreta" });
         }
+  
+        // verifica se a nova senha é igual à atual
+        const novaIgualAtual = await bcrypt.compare(nova_senha, usuarioAtual.senha);
+        if (novaIgualAtual) {
+          return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual" });
+        }
+  
+        // gera hash da nova senha
+        const hashedPassword = await bcrypt.hash(nova_senha, SALT_ROUNDS);
+        campos.push("senha = ?");
+        valores.push(hashedPassword);
+  
+      } else if ((senha_atual && !nova_senha) || (!senha_atual && nova_senha)) {
+        // se enviar só um dos campos
+        return res.status(400).json({ error: "Para alterar a senha, envie senha_atual e nova_senha" });
       }
-       // 6. Verifica se nao existe nenhum email duplicado
-       if (email && email !== usuarioAtual.email) {
+  
+      // 4. Atualiza email
+      if (email && email !== usuarioAtual.email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
           return res.status(400).json({ error: "E-mail inválido" });
@@ -138,7 +153,7 @@ class UsuarioController {
         valores.push(email);
       }
   
-      // 4. Atualiza imagem se veio no request (sempre que tiver req.file)
+      // 5. Atualiza imagem
       if (req.file) {
         campos.push("imagem = ?");
         valores.push(req.file.buffer);
@@ -147,26 +162,21 @@ class UsuarioController {
         valores.push(req.file.mimetype);
       }
   
-      // 5. Se não tiver nenhum campo para alterar
+      // 6. Se não tiver nenhum campo para alterar
       if (campos.length === 0) {
-        return res.status(400).json({ error: "Nenhum campo para alterar" });
+        return res.status(400).json({ error: "Nenhum campo foi alterado" });
       }
   
-     
-
-      // 6. Executa UPDATE
-      valores.push(id_usuario); // para WHERE
+      // 7. Executa update
+      valores.push(id_usuario);
       const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
-      const [result] = await connect.execute(query, valores);
   
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-      }
+      await connect.execute(query, valores);
   
-      return res.status(200).json({ message: "Perfil atualizado com sucesso" });
-    } catch (err) {
-      console.error("Erro ao atualizar usuário:", err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
+      return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+  
+    } catch (error) {
+      return res.status(500).json({ error });
     }
   }
   

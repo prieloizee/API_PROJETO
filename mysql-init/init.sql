@@ -52,6 +52,8 @@ CREATE TABLE `avaliacoes` (
   `google_place_id` varchar(255) NOT NULL,
   `comentario` text NOT NULL,
   `nota` TINYINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  `endereco` varchar(255) DEFAULT NULL,
+  `nome_estabelecimento` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_avaliacao`),
   KEY `id_usuario` (`id_usuario`),
@@ -142,6 +144,7 @@ CREATE TABLE `usuario` (
   UNIQUE KEY `cpf` (`cpf`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
 
 --
 -- Dumping data for table `usuario`

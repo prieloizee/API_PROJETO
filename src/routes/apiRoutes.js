@@ -22,6 +22,7 @@ router.put(
 );
 router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
+
 // rotas para estabelecimento
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
 // http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
@@ -36,7 +37,8 @@ router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao", verifyJWT, avaliacaoController.update);
 router.delete("/:id_avaliacao", verifyJWT, avaliacaoController.delete);
-router.get("/avaliacoes/:id_usuario", avaliacaoController.listByUser);
+router.get("/avaliacao", verifyJWT, avaliacaoController.listByUser);
+
 
 
 // Favoritos
