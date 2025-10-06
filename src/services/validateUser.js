@@ -15,9 +15,13 @@ module.exports = function validateUser({
       };
     }
   
-    if (!email.includes("@")) {
-      return { error: "Email inválido. Deve conter @" };
+      if (email) {
+    // Agora aceita qualquer domínio com ponto e algo após ele (ex: .com, .com.br, .org)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return { error: "E-mail inválido. Deve conter '@' e um domínio válido (ex: .com, .org, .br)" };
     }
+  }
   
     // Retorna null se não houver erro
     return null; 
