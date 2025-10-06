@@ -6,14 +6,26 @@ const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
 const upload = require("../services/upload");
 
+
 // Rotas do Usuário
-router.post("/user", usuarioController.createUsuario); // Criar usuário (não envia imagem aqui)
-router.post("/login", usuarioController.loginUsuario); // Login
-router.post("/user/verify-code", usuarioController.verifyEmailCode); // Verificação de email
-router.get("/user/:id", usuarioController.getUsuarioById); // Buscar usuário por ID
-router.get("/user", verifyJWT, usuarioController.getAllUsers); // Listar todos (precisa estar logado)
-router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage); // Atualizar usuário
-router.delete("/user/:id", verifyJWT, usuarioController.deleteUser); // Deletar usuário
+//Solicitar código de verificação para cadastro 
+router.post("/user/cadastro", usuarioController.solicitarCodigo);
+//  Confirmar código e criar usuário
+router.post("/user/confirm", usuarioController.confirmarCodigo);
+// Login
+router.post("/login", usuarioController.loginUsuario);
+//  Solicitar redefinição de senha (esqueceu senha)
+router.post("/user/redefinir", usuarioController.solicitarRedefinicaoSenha);
+// Resetar senha com código enviado por e-mail
+router.post("/user/reset-password", usuarioController.resetarSenha);
+// Buscar usuário por ID
+router.get("/user/:id", usuarioController.getUsuarioById);
+//  Atualizar usuário (com upload de imagem)
+router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage);
+//  Deletar usuário
+router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
+
+
 
 // Rotas para estabelecimento
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
