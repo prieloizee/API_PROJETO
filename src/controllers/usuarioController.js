@@ -1,10 +1,9 @@
+const connect = require("../db/connect").promise();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const connect = require("../db/connect").promise();
-const SALT_ROUNDS = 10;
-const emailServices = require("../services/emailServices");
+const emailService = require("../services/emailServices");
 
-//await emailServices.sendVerificationEmail(usuario.email, usuario.verificationCode);
+const SALT_ROUNDS = 10;
 
 class UsuarioController {
   // Criar usuário
@@ -17,15 +16,33 @@ class UsuarioController {
       }
 
       if (senha !== confirmarSenha) {
-        return res.status(400).json({ error: "As senhas não conferem" });
+        return res.status(400).json({ error: "As senhas não são iguais" });
       }
 
       const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
 
-      const query = `INSERT INTO usuario (nome, email, senha, cpf) VALUES (?, ?, ?, ?)`;
-      const [result] = await connect.execute(query, [nome, email, hashedPassword, cpf]);
+      // Código de verificação de email
+      const verificationCode = Math.floor(100000 + Math.random() * 900000);
 
-      return res.status(201).json({ message: "Usuário criado com sucesso", id_usuario: result.insertId });
+      const query = `
+        INSERT INTO usuario (nome, email, senha, cpf, verification_code, email_verified)
+        VALUES (?, ?, ?, ?, ?, 0)
+      `;
+      const [result] = await connect.execute(query, [
+        nome,
+        email,
+        hashedPassword,
+        cpf,
+        verificationCode
+      ]);
+
+      // Envia email de verificação
+      await emailService.sendVerificationEmail(email, verificationCode);
+
+      return res.status(201).json({
+        message: "Usuário criado. Verifique seu email!",
+        usuario: { id_usuario: result.insertId, nome, email }
+      });
     } catch (err) {
       if (err.code === "ER_DUP_ENTRY") {
         return res.status(400).json({ error: "Email ou CPF já cadastrado" });
@@ -35,11 +52,38 @@ class UsuarioController {
     }
   }
 
+  // Verificar código de email
+  static async verifyEmailCode(req, res) {
+    try {
+      const { email, code } = req.body;
+      const [rows] = await connect.execute(
+        "SELECT * FROM usuario WHERE email = ? AND verification_code = ?",
+        [email, code]
+      );
+
+      if (rows.length === 0) {
+        return res.status(400).json({ error: "Código inválido" });
+      }
+
+      await connect.execute(
+        "UPDATE usuario SET email_verified = 1, verification_code = NULL WHERE email = ?",
+        [email]
+      );
+
+      return res.json({ message: "Email verificado com sucesso!" });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
   // Login
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
-      if (!email || !senha) return res.status(400).json({ error: "Email e senha obrigatórios" });
+      if (!email || !senha) {
+        return res.status(400).json({ error: "Email e senha obrigatórios" });
+      }
 
       const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
       if (rows.length === 0) return res.status(401).json({ error: "Usuário não encontrado" });
@@ -47,6 +91,7 @@ class UsuarioController {
       const user = rows[0];
       const senhaOK = await bcrypt.compare(senha, user.senha);
       if (!senhaOK) return res.status(401).json({ error: "Senha incorreta" });
+      if (!user.email_verified) return res.status(401).json({ error: "Email não verificado" });
 
       const token = jwt.sign({ id_usuario: user.id_usuario }, process.env.SECRET, { expiresIn: "1h" });
 
@@ -54,75 +99,7 @@ class UsuarioController {
       delete user.imagem;
       delete user.tipo_imagem;
 
-      return res.status(200).json({ message: "Login bem-sucedido", user, token });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-
-  // Recuperação de senha
-  static async sendRecoveryCode(req, res) {
-    try {
-      const { email } = req.body;
-      if (!email) return res.status(400).json({ error: "Email obrigatório" });
-
-      const [rows] = await connect.execute("SELECT * FROM usuario WHERE email = ?", [email]);
-      if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
-
-      const code = Math.floor(100000 + Math.random() * 900000);
-
-      // Salva código temporário no banco
-      const expiracao = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
-      await connect.execute(
-        "INSERT INTO temp_email_codes (email, code, tipo, expiracao) VALUES (?, ?, 'recuperacao', ?)",
-        [email, code, expiracao]
-      );
-
-      // Envia email com código
-      await emailServices.sendRecoveryEmail(email, code);
-
-      return res.status(200).json({ message: "Código de recuperação enviado por email" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-
-  static async verifyRecoveryCode(req, res) {
-    try {
-      const { email, code } = req.body;
-      const [rows] = await connect.execute(
-        "SELECT * FROM temp_email_codes WHERE email = ? AND code = ? AND tipo = 'recuperacao' AND expiracao > NOW()",
-        [email, code]
-      );
-
-      if (rows.length === 0) return res.status(400).json({ error: "Código inválido ou expirado" });
-
-      return res.status(200).json({ message: "Código válido, você pode redefinir a senha" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno do servidor" });
-    }
-  }
-
-  static async resetPassword(req, res) {
-    try {
-      const { email, code, novaSenha, confirmarSenha } = req.body;
-      if (!novaSenha || !confirmarSenha) return res.status(400).json({ error: "Preencha todas as senhas" });
-      if (novaSenha !== confirmarSenha) return res.status(400).json({ error: "As senhas não conferem" });
-
-      const [rows] = await connect.execute(
-        "SELECT * FROM temp_email_codes WHERE email = ? AND code = ? AND tipo = 'recuperacao' AND expiracao > NOW()",
-        [email, code]
-      );
-      if (rows.length === 0) return res.status(400).json({ error: "Código inválido ou expirado" });
-
-      const hashedPassword = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [hashedPassword, email]);
-      await connect.execute("DELETE FROM temp_email_codes WHERE email = ? AND tipo = 'recuperacao'", [email]);
-
-      return res.status(200).json({ message: "Senha redefinida com sucesso" });
+      return res.json({ message: "Login bem-sucedido", user, token });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno do servidor" });
@@ -133,12 +110,11 @@ class UsuarioController {
   static async getUsuarioById(req, res) {
     try {
       const [rows] = await connect.execute(
-        "SELECT id_usuario, nome, email, cpf FROM usuario WHERE id_usuario = ?",
+        "SELECT id_usuario, nome, email, cpf, email_verified FROM usuario WHERE id_usuario = ?",
         [req.params.id]
       );
       if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
-
-      return res.status(200).json(rows[0]);
+      return res.json({ user: rows[0] });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno do servidor" });
@@ -148,8 +124,10 @@ class UsuarioController {
   // Obter todos os usuários
   static async getAllUsers(req, res) {
     try {
-      const [rows] = await connect.execute("SELECT id_usuario, nome, email, cpf FROM usuario");
-      return res.status(200).json(rows);
+      const [rows] = await connect.execute(
+        "SELECT id_usuario, nome, email, cpf, email_verified FROM usuario"
+      );
+      return res.json({ users: rows });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno do servidor" });
@@ -159,18 +137,38 @@ class UsuarioController {
   // Atualizar usuário com imagem
   static async updateUserWithImage(req, res) {
     try {
+      const id_usuario = req.userId;
+      const { nome, senha, email } = req.body;
       const campos = [];
       const valores = [];
 
-      if (req.body.nome) {
+      const [rows] = await connect.execute(
+        "SELECT nome, senha, email FROM usuario WHERE id_usuario = ?",
+        [id_usuario]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado" });
+
+      const usuarioAtual = rows[0];
+
+      if (nome && nome !== usuarioAtual.nome) {
         campos.push("nome = ?");
-        valores.push(req.body.nome);
+        valores.push(nome);
       }
 
-      if (req.body.senha) {
-        const hashed = await bcrypt.hash(req.body.senha, SALT_ROUNDS);
-        campos.push("senha = ?");
-        valores.push(hashed);
+      if (senha) {
+        const senhaIgual = await bcrypt.compare(senha, usuarioAtual.senha);
+        if (!senhaIgual) {
+          const hashedPassword = await bcrypt.hash(senha, SALT_ROUNDS);
+          campos.push("senha = ?");
+          valores.push(hashedPassword);
+        }
+      }
+
+      if (email && email !== usuarioAtual.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return res.status(400).json({ error: "E-mail inválido" });
+        campos.push("email = ?");
+        valores.push(email);
       }
 
       if (req.file) {
@@ -178,13 +176,13 @@ class UsuarioController {
         valores.push(req.file.buffer, req.file.mimetype);
       }
 
-      if (campos.length === 0) return res.status(400).json({ error: "Nenhum campo para atualizar" });
+      if (campos.length === 0) return res.status(400).json({ error: "Nenhum campo para alterar" });
 
-      valores.push(req.userId);
+      valores.push(id_usuario);
       const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
       await connect.execute(query, valores);
 
-      return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+      return res.json({ message: "Perfil atualizado com sucesso" });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno do servidor" });
@@ -194,10 +192,10 @@ class UsuarioController {
   // Deletar usuário
   static async deleteUser(req, res) {
     try {
-      const [result] = await connect.execute("DELETE FROM usuario WHERE id_usuario = ?", [req.params.id]);
+      const { id } = req.params;
+      const [result] = await connect.execute("DELETE FROM usuario WHERE id_usuario = ?", [id]);
       if (result.affectedRows === 0) return res.status(404).json({ error: "Usuário não encontrado" });
-
-      return res.status(200).json({ message: "Usuário deletado com sucesso" });
+      return res.json({ message: `Usuário excluído com ID: ${id}` });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno do servidor" });
