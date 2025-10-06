@@ -6,7 +6,7 @@ const emailService = require("../services/emailServices");
 const SALT_ROUNDS = 10;
 
 class UsuarioController {
-  // 1️⃣ Solicitar código para cadastro (não cria usuário ainda)
+  // Solicitar código para cadastro (não cria usuário ainda)
   static async solicitarCodigo(req, res) {
     try {
       const { nome, email, senha, confirmarSenha, cpf } = req.body;
@@ -55,7 +55,7 @@ class UsuarioController {
     }
   }
 
-  // 2️⃣ Confirmar código e criar usuário de fato
+  // Confirmar código e criar usuário de fato
   static async confirmarCodigo(req, res) {
     try {
       const { email, code } = req.body;
@@ -106,7 +106,7 @@ class UsuarioController {
     }
   }
 
-  // 3️⃣ Login
+  //  Login
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
@@ -152,7 +152,7 @@ class UsuarioController {
     }
   }
 
-  // 4️⃣ Solicitar redefinição de senha (esqueceu senha)
+  // Solicitar redefinição de senha (esqueceu senha)
   static async solicitarRedefinicaoSenha(req, res) {
     try {
       const { email } = req.body;
@@ -188,7 +188,7 @@ class UsuarioController {
     }
   }
 
-  // 5️⃣ Resetar senha com código
+  // Resetar senha com código
   static async resetarSenha(req, res) {
     try {
       const { email, code, novaSenha } = req.body;
@@ -232,7 +232,7 @@ class UsuarioController {
     }
   }
 
-  // 6️⃣ Buscar usuário por ID
+  // Buscar usuário por ID
   static async getUsuarioById(req, res) {
     try {
       const { id } = req.params;
@@ -252,7 +252,7 @@ class UsuarioController {
     }
   }
 
-  // 7️⃣ Atualizar usuário com imagem
+  //Atualizar usuário com imagem
   static async updateUserWithImage(req, res) {
     try {
       const id_usuario = req.userId;
