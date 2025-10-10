@@ -32,6 +32,8 @@ router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
 // http://localhost:3000/projeto_final/buscar/ID
 
+
+
 // router avaliações
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);

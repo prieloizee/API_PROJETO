@@ -146,20 +146,27 @@ module.exports = class avaliacaoController {
   }
 
   // Deletar avaliação
-  static async delete(req, res) {
-    const { id_avaliacao } = req.params;
+static async delete(req, res) {
+  const { id_avaliacao } = req.params;
 
-    const query = `DELETE FROM avaliacoes WHERE id_avaliacao = ?`;
-
-    try {
-      pool.query(query, [id_avaliacao], (err, result) => {
-        if (err) return res.status(500).json({ error: err });
-        if (result.affectedRows === 0)
-          return res.status(404).json({ error: "Avaliação não encontrada" });
-        return res.status(200).json({ message: "Avaliação deletada com sucesso" });
-      });
-    } catch (error) {
-      return res.status(500).json({ error });
-    }
+  if (!req.userId) {
+    return res.status(401).json({ error: "Usuário não autenticado" });
   }
-};
+
+  try {
+    const [result] = await pool.query(
+      "DELETE FROM avaliacoes WHERE id_avaliacao = ? AND id_usuario = ?",
+      [id_avaliacao, req.userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Avaliação não encontrada ou você não tem permissão para deletar" });
+    }
+
+    return res.status(200).json({ message: "Avaliação deletada com sucesso" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Erro ao deletar avaliação" });
+  }
+}
+}
