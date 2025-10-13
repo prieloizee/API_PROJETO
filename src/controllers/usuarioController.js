@@ -212,30 +212,64 @@ class UsuarioController {
   }
 
   // Resetar senha com código
-  static async resetarSenha(req, res) {
-    try {
-      const { email, code, novaSenha } = req.body;
-      if (!email || !code || !novaSenha) return res.status(400).json({ error: "Todos os campos são obrigatórios." });
+  // Resetar senha com código
+static async resetarSenha(req, res) {
+  try {
+    const { email, code, novaSenha } = req.body;
 
-      const [rows] = await connect.execute("SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?", [email, code]);
-      if (rows.length === 0) return res.status(400).json({ error: "Código inválido." });
-
-      const registro = rows[0];
-      if (new Date() > new Date(registro.expiracao)) {
-        await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
-        return res.status(400).json({ error: "Código expirado. Solicite outro." });
-      }
-
-      const hash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [hash, email]);
-      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
-
-      return res.status(200).json({ message: "Senha alterada com sucesso!" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno ao resetar senha." });
+    if (!email || !code || !novaSenha) {
+      return res.status(400).json({ error: "Todos os campos são obrigatórios." });
     }
+
+    // 🔹 1. Verifica se o código de redefinição é válido
+    const [rows] = await connect.execute(
+      "SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?",
+      [email, code]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: "Código inválido." });
+    }
+
+    const registro = rows[0];
+    if (new Date() > new Date(registro.expiracao)) {
+      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
+      return res.status(400).json({ error: "Código expirado. Solicite outro." });
+    }
+
+    // 🔹 2. Busca a senha atual do usuário
+    const [usuarioRows] = await connect.execute(
+      "SELECT senha FROM usuario WHERE email = ?",
+      [email]
+    );
+
+    if (usuarioRows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado." });
+    }
+
+    const senhaAtualHash = usuarioRows[0].senha;
+
+    // 🔹 3. Verifica se a nova senha é igual à atual
+    const ehMesmaSenha = await bcrypt.compare(novaSenha, senhaAtualHash);
+    if (ehMesmaSenha) {
+      return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual." });
+    }
+
+    // 🔹 4. Atualiza a senha com o novo hash
+    const novaSenhaHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
+    await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [novaSenhaHash, email]);
+
+    // 🔹 5. Remove o código de redefinição
+    await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
+
+    return res.status(200).json({ message: "Senha alterada com sucesso!" });
+  } catch (err) {
+    console.error("Erro ao redefinir senha:", err);
+    return res.status(500).json({ error: "Erro interno ao redefinir senha." });
   }
+}
+
+
 
   // Buscar usuário por ID
   static async getUsuarioById(req, res) {
