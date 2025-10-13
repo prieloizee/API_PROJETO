@@ -18,9 +18,9 @@ router.get("/user/:id", usuarioController.getUsuarioById);
 router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage);
 router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
 router.get("/user", verifyJWT, usuarioController.getAllUsers);
+router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
-// Rotas para imagem de perfil (se implementar a função getImagemPerfil)
-// router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
+
 
 // Rotas para estabelecimentos
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
