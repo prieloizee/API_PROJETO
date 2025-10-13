@@ -4,7 +4,7 @@ USE `projeto_final`;
 --
 -- Host: localhost    Database: projeto_final
 -- ------------------------------------------------------
--- Server version	8.0.36
+-- Server version 8.0.36
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -18,34 +18,6 @@ USE `projeto_final`;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `avaliacoes`
---
-
-DROP TABLE IF EXISTS `avaliacoes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `avaliacoes` (
-  `id_avaliacao` int NOT NULL AUTO_INCREMENT,
-  `id_usuario` int NOT NULL,
-  `google_place_id` varchar(255) NOT NULL,
-  `comentario` text NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_avaliacao`),
-  KEY `id_usuario` (`id_usuario`),
-  CONSTRAINT `avaliacoes_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `avaliacoes`
---
-
-LOCK TABLES `avaliacoes` WRITE;
-/*!40000 ALTER TABLE `avaliacoes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `avaliacoes` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
 -- Table structure for table `estabelecimentos`
 --
 
@@ -53,31 +25,72 @@ DROP TABLE IF EXISTS `estabelecimentos`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `estabelecimentos` (
-  `id` int NOT NULL AUTO_INCREMENT,
   `place_id` varchar(100) NOT NULL,
   `nome` varchar(255) NOT NULL,
   `endereco` varchar(255) NOT NULL,
-  `cidade` varchar(100) NOT NULL,
   `categoria` varchar(100) DEFAULT NULL,
   `telefone` varchar(50) DEFAULT NULL,
   `site` varchar(255) DEFAULT NULL,
-  `avaliacao` decimal(3,1) DEFAULT NULL,
   `latitude` decimal(10,7) DEFAULT NULL,
   `longitude` decimal(10,7) DEFAULT NULL,
   `criado_em` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `atualizado_em` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `place_id` (`place_id`)
+  PRIMARY KEY (`place_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `estabelecimentos`
 --
+DROP TABLE IF EXISTS `avaliacoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `avaliacoes` (
+  `id_avaliacao` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `google_place_id` varchar(255) NOT NULL,
+  `comentario` text NOT NULL,
+  `nota` TINYINT NOT NULL CHECK (nota BETWEEN 1 AND 5),
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_avaliacao`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `avaliacoes_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
 LOCK TABLES `estabelecimentos` WRITE;
 /*!40000 ALTER TABLE `estabelecimentos` DISABLE KEYS */;
 /*!40000 ALTER TABLE `estabelecimentos` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `favoritos`
+--
+
+DROP TABLE IF EXISTS `favoritos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `favoritos` (
+  `id_favorito` int NOT NULL AUTO_INCREMENT,
+  `id_usuario` int NOT NULL,
+  `google_place_id` varchar(255) NOT NULL,
+  `nome_estabelecimento` varchar(255) DEFAULT NULL,
+  `endereco` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_favorito`),
+  KEY `id_usuario` (`id_usuario`),
+  CONSTRAINT `favoritos_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `favoritos`
+--
+
+LOCK TABLES `favoritos` WRITE;
+/*!40000 ALTER TABLE `favoritos` DISABLE KEYS */;
+/*!40000 ALTER TABLE `favoritos` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -97,7 +110,7 @@ CREATE TABLE `horarios` (
   PRIMARY KEY (`id`),
   KEY `place_id` (`place_id`),
   CONSTRAINT `horarios_ibfk_1` FOREIGN KEY (`place_id`) REFERENCES `estabelecimentos` (`place_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1100 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -122,10 +135,12 @@ CREATE TABLE `usuario` (
   `email` varchar(100) NOT NULL,
   `senha` varchar(255) NOT NULL,
   `cpf` char(11) NOT NULL,
+  `imagem` longblob,
+  `tipo_imagem` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `cpf` (`cpf`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -134,7 +149,7 @@ CREATE TABLE `usuario` (
 
 LOCK TABLES `usuario` WRITE;
 /*!40000 ALTER TABLE `usuario` DISABLE KEYS */;
-INSERT INTO `usuario` VALUES (1,'João Silva','joao.silva@example.com','senha123','16123456789'),(2,'Maria Oliveira','maria.oliveira@example.com','senha123','16987654321'),(3,'Carlos Pereira','carlos.pereira@example.com','senha123','16123987456'),(4,'Ana Souza','ana.souza@example.com','senha123','16456123789'),(5,'Pedro Costa','pedro.costa@example.com','senha123','16789123456'),(6,'Laura Lima','laura.lima@example.com','senha123','16321654987');
+INSERT INTO `usuario` VALUES (1,'Jo├úo Silva','joao.silva@example.com','senha123','16123456789',NULL,NULL),(2,'Maria Oliveira','maria.oliveira@example.com','senha123','16987654321',NULL,NULL),(3,'Carlos Pereira','carlos.pereira@example.com','senha123','16123987456',NULL,NULL),(4,'Ana Souza','ana.souza@example.com','senha123','16456123789',NULL,NULL),(5,'Pedro Costa','pedro.costa@example.com','senha123','16789123456',NULL,NULL),(6,'Laura Lima','laura.lima@example.com','senha123','16321654987',NULL,NULL),(8,'pri','pri24@pri','$2b$10$1SgaPMrX9KN/Bxc..aDHvu5fI3PzvqxbED2v0OMLVR6sBSdH6jge.','12345678909',NULL,NULL);
 /*!40000 ALTER TABLE `usuario` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -155,4 +170,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-08-15 10:51:53
+-- Dump completed on 2025-08-27 16:16:41
