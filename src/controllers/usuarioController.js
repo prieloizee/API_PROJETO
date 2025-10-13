@@ -343,6 +343,23 @@ class UsuarioController {
       return res.status(500).json({ error: "Erro interno do servidor" });
     }
   }
+  static async getImagemPerfil(req, res) {
+  try {
+    const id_usuario = req.params.id;
+    const query = "SELECT imagem, tipo_imagem FROM usuario WHERE id_usuario = ?";
+    const [results] = await connect.execute(query, [id_usuario]);
+
+    if (!results.length || !results[0].imagem)
+      return res.status(404).send("Imagem não encontrada");
+
+    res.set("Content-Type", results[0].tipo_imagem || "image/jpeg");
+    res.send(results[0].imagem);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro interno no servidor" });
+  }
+}
+
 
 }
 
