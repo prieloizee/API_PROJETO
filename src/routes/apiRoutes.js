@@ -9,7 +9,7 @@ const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
 
 // Rotas do Usuário
-router.post("/user/cadastro", usuarioController.solicitarCodigo);
+router.post("/user", usuarioController.solicitarCodigo);
 router.post("/user/confirm", usuarioController.confirmarCodigo);
 router.post("/login", usuarioController.loginUsuario);
 router.post("/user/redefinir", usuarioController.solicitarRedefinicaoSenha);
@@ -17,6 +17,7 @@ router.post("/user/reset-password", usuarioController.resetarSenha);
 router.get("/user/:id", usuarioController.getUsuarioById);
 router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage);
 router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
+router.get("/user", verifyJWT, usuarioController.getAllUsers);
 
 // Rotas para imagem de perfil (se implementar a função getImagemPerfil)
 // router.get("/user/:id/imagem", usuarioController.getImagemPerfil);

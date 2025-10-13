@@ -322,6 +322,28 @@ class UsuarioController {
       return res.status(500).json({ error: "Erro interno ao deletar usuário." });
     }
   }
+  
+    static async getAllUsers(req, res) {
+    try {
+      const query = `SELECT * FROM usuario`;
+      const [results] = await connect.execute(query);
+
+      const users = results.map((user) => {
+        delete user.senha;
+        delete user.imagem;
+        delete user.tipo_imagem;
+        return user;
+      });
+
+      return res
+        .status(200)
+        .json({ message: "Obtendo todos os usuários", users });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro interno do servidor" });
+    }
+  }
+
 }
 
 module.exports = UsuarioController;

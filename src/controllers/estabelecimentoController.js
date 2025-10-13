@@ -145,4 +145,5 @@ module.exports = class EstabelecimentoController {
         .json({ message: "Erro interno do servidor", error: err.message });
     }
   }
+  
 };
