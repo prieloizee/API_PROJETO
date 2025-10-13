@@ -1,42 +1,36 @@
 const router = require("express").Router();
+const multer = require("multer");
+const upload = multer(); // salva o arquivo em memória (req.file.buffer)
+
 const verifyJWT = require("../services/verifyJWT");
 const usuarioController = require("../controllers/usuarioController");
 const estabelecimentosController = require("../controllers/estabelecimentoController");
 const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
-const upload = require("../services/upload");
-
 
 // Rotas do Usuário
-//Solicitar código de verificação para cadastro 
 router.post("/user/cadastro", usuarioController.solicitarCodigo);
-//  Confirmar código e criar usuário
 router.post("/user/confirm", usuarioController.confirmarCodigo);
-// Login
 router.post("/login", usuarioController.loginUsuario);
-//  Solicitar redefinição de senha (esqueceu senha)
 router.post("/user/redefinir", usuarioController.solicitarRedefinicaoSenha);
-// Resetar senha com código enviado por e-mail
 router.post("/user/reset-password", usuarioController.resetarSenha);
-// Buscar usuário por ID
 router.get("/user/:id", usuarioController.getUsuarioById);
-//  Atualizar usuário (com upload de imagem)
 router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage);
-//  Deletar usuário
 router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
 
+// Rotas para imagem de perfil (se implementar a função getImagemPerfil)
+// router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
-
-// Rotas para estabelecimento
+// Rotas para estabelecimentos
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
-// Ex.: /buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
 
-// Rotas de avaliações
+// Rotas para avaliações
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao", verifyJWT, avaliacaoController.update);
-router.delete("/:id_avaliacao", verifyJWT, avaliacaoController.delete);
+router.delete("/avaliacao/:id_avaliacao", verifyJWT, avaliacaoController.delete);
+router.get("/avaliacao", verifyJWT, avaliacaoController.listByUser);
 
 // Rotas de favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);

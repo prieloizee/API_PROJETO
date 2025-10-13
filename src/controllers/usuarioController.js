@@ -38,7 +38,7 @@ class UsuarioController {
       const expiracao = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos
       await connect.execute(
         "INSERT INTO temp_users (nome, email, senha, cpf, code, expiracao) VALUES (?, ?, ?, ?, ?, ?)",
-        [nome, email, senha, cpf, codigo, expiracao] // aqui o email vai na posição certa
+        [nome, email, senha, cpf, codigo, expiracao]
       );
 
       // Envia e-mail com o código
@@ -77,12 +77,8 @@ class UsuarioController {
 
       const tempUser = rows[0];
       if (new Date() > new Date(tempUser.expiracao)) {
-        await connect.execute("DELETE FROM temp_users WHERE email = ?", [
-          email,
-        ]);
-        return res
-          .status(400)
-          .json({ error: "Código expirado. Solicite outro." });
+        await connect.execute("DELETE FROM temp_users WHERE email = ?", [email]);
+        return res.status(400).json({ error: "Código expirado. Solicite outro." });
       }
 
       // Cria usuário de fato
@@ -106,7 +102,7 @@ class UsuarioController {
     }
   }
 
-  //  Login
+  // Login
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
@@ -134,21 +130,96 @@ class UsuarioController {
       const token = jwt.sign(
         { id_usuario: user.id_usuario },
         process.env.SECRET,
-        {
-          expiresIn: "1h",
-        }
+        { expiresIn: "1h" }
       );
 
       delete user.senha;
 
-      return res.status(200).json({
-        message: "Login bem-sucedido!",
-        user,
-        token,
-      });
+      return res.status(200).json({ message: "Login bem-sucedido!", user, token });
     } catch (err) {
       console.error("Erro no login:", err);
       return res.status(500).json({ error: "Erro interno no servidor." });
+    }
+  }
+
+  // Atualizar usuário com imagem
+  static async updateUserWithImage(req, res) {
+    const { nome, email, senha_atual, nova_senha } = req.body;
+
+    if (!req.userId) {
+      return res.status(401).json({ error: "Usuário não autenticado ou token inválido" });
+    }
+
+    const id_usuario = req.userId;
+    const campos = [];
+    const valores = [];
+
+    try {
+      const [rows] = await connect.execute(
+        "SELECT nome, senha, email FROM usuario WHERE id_usuario = ?",
+        [id_usuario]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado" });
+      }
+
+      const usuarioAtual = rows[0];
+
+      // Atualiza nome
+      if (nome && nome !== usuarioAtual.nome) {
+        campos.push("nome = ?");
+        valores.push(nome);
+      }
+
+      // Atualiza senha
+      if (senha_atual?.trim() && nova_senha?.trim()) {
+        const senhaValida = await bcrypt.compare(senha_atual, usuarioAtual.senha);
+        if (!senhaValida) {
+          return res.status(400).json({ error: "Senha atual incorreta" });
+        }
+
+        const novaIgualAtual = await bcrypt.compare(nova_senha, usuarioAtual.senha);
+        if (novaIgualAtual) {
+          return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual" });
+        }
+
+        const hashedPassword = await bcrypt.hash(nova_senha, SALT_ROUNDS);
+        campos.push("senha = ?");
+        valores.push(hashedPassword);
+      } else if ((senha_atual && !nova_senha) || (!senha_atual && nova_senha)) {
+        return res.status(400).json({ error: "Para alterar a senha, envie senha_atual e nova_senha" });
+      }
+
+      // Atualiza email
+      if (email && email !== usuarioAtual.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ error: "E-mail inválido" });
+        }
+        campos.push("email = ?");
+        valores.push(email);
+      }
+
+      // Atualiza imagem
+      if (req.file) {
+        campos.push("imagem = ?");
+        valores.push(req.file.buffer);
+        campos.push("tipo_imagem = ?");
+        valores.push(req.file.mimetype);
+      }
+
+      if (campos.length === 0) {
+        return res.status(400).json({ error: "Nenhum campo foi alterado" });
+      }
+
+      valores.push(id_usuario);
+      const query = `UPDATE usuario SET ${campos.join(", ")} WHERE id_usuario = ?`;
+      await connect.execute(query, valores);
+
+      return res.status(200).json({ message: "Usuário atualizado com sucesso" });
+    } catch (error) {
+      return res.status(500).json({ error });
     }
   }
 
@@ -156,22 +227,18 @@ class UsuarioController {
   static async solicitarRedefinicaoSenha(req, res) {
     try {
       const { email } = req.body;
-      if (!email)
-        return res.status(400).json({ error: "Email é obrigatório." });
+      if (!email) return res.status(400).json({ error: "Email é obrigatório." });
 
       const [rows] = await connect.execute(
         "SELECT * FROM usuario WHERE email = ?",
         [email]
       );
-      if (rows.length === 0)
-        return res.status(404).json({ error: "Usuário não encontrado." });
+      if (rows.length === 0) return res.status(404).json({ error: "Usuário não encontrado." });
 
       const codigo = Math.floor(100000 + Math.random() * 900000).toString();
       const expiracao = new Date(Date.now() + 15 * 60 * 1000);
 
-      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [
-        email,
-      ]);
+      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
       await connect.execute(
         "INSERT INTO temp_reset_codes (email, code, expiracao) VALUES (?, ?, ?)",
         [email, codigo, expiracao]
@@ -179,9 +246,7 @@ class UsuarioController {
 
       await emailService.sendVerificationEmail(email, codigo);
 
-      return res
-        .status(200)
-        .json({ message: "Código de redefinição enviado para o seu e-mail." });
+      return res.status(200).json({ message: "Código de redefinição enviado para o seu e-mail." });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: "Erro interno ao gerar código." });
@@ -193,37 +258,24 @@ class UsuarioController {
     try {
       const { email, code, novaSenha } = req.body;
       if (!email || !code || !novaSenha)
-        return res
-          .status(400)
-          .json({ error: "Todos os campos são obrigatórios." });
+        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
 
       const [rows] = await connect.execute(
         "SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?",
         [email, code]
       );
 
-      if (rows.length === 0)
-        return res.status(400).json({ error: "Código inválido." });
+      if (rows.length === 0) return res.status(400).json({ error: "Código inválido." });
 
       const registro = rows[0];
       if (new Date() > new Date(registro.expiracao)) {
-        await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [
-          email,
-        ]);
-        return res
-          .status(400)
-          .json({ error: "Código expirado. Solicite outro." });
+        await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
+        return res.status(400).json({ error: "Código expirado. Solicite outro." });
       }
 
       const hash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [
-        hash,
-        email,
-      ]);
-
-      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [
-        email,
-      ]);
+      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [hash, email]);
+      await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
 
       return res.status(200).json({ message: "Senha alterada com sucesso!" });
     } catch (err) {
@@ -252,69 +304,7 @@ class UsuarioController {
     }
   }
 
-  //Atualizar usuário com imagem
-  static async updateUserWithImage(req, res) {
-    try {
-      const id_usuario = req.userId;
-      const { nome, senha, email } = req.body;
-      const campos = [];
-      const valores = [];
-
-      const [rows] = await connect.execute(
-        "SELECT nome, senha, email FROM usuario WHERE id_usuario = ?",
-        [id_usuario]
-      );
-      if (rows.length === 0)
-        return res.status(404).json({ error: "Usuário não encontrado." });
-
-      const usuarioAtual = rows[0];
-
-      if (nome && nome !== usuarioAtual.nome) {
-        campos.push("nome = ?");
-        valores.push(nome);
-      }
-
-      if (senha) {
-        const mesmaSenha = await bcrypt.compare(senha, usuarioAtual.senha);
-        if (!mesmaSenha) {
-          const hash = await bcrypt.hash(senha, SALT_ROUNDS);
-          campos.push("senha = ?");
-          valores.push(hash);
-        }
-      }
-
-      if (email && email !== usuarioAtual.email) {
-        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!regex.test(email))
-          return res.status(400).json({ error: "Email inválido." });
-        campos.push("email = ?");
-        valores.push(email);
-      }
-
-      if (req.file) {
-        campos.push("imagem = ?", "tipo_imagem = ?");
-        valores.push(req.file.buffer, req.file.mimetype);
-      }
-
-      if (campos.length === 0)
-        return res.status(400).json({ error: "Nenhum campo foi alterado." });
-
-      valores.push(id_usuario);
-      const query = `UPDATE usuario SET ${campos.join(
-        ", "
-      )} WHERE id_usuario = ?`;
-      await connect.execute(query, valores);
-
-      return res
-        .status(200)
-        .json({ message: "Perfil atualizado com sucesso!" });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Erro interno no servidor." });
-    }
-  }
-
-  // 8️⃣ Deletar usuário
+  // Deletar usuário
   static async deleteUser(req, res) {
     try {
       const { id } = req.params;
@@ -329,9 +319,7 @@ class UsuarioController {
       return res.status(200).json({ message: "Usuário excluído com sucesso!" });
     } catch (err) {
       console.error(err);
-      return res
-        .status(500)
-        .json({ error: "Erro interno ao deletar usuário." });
+      return res.status(500).json({ error: "Erro interno ao deletar usuário." });
     }
   }
 }
