@@ -17,7 +17,7 @@ module.exports = class EstabelecimentoController {
         location,
         radius,
         type
-      )).slice(0, 2);      
+      )).slice(0, 6);      
       const resultados = [];
 
       for (const est of estabelecimentosBrutos) {
