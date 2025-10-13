@@ -8,50 +8,33 @@ const estabelecimentosController = require("../controllers/estabelecimentoContro
 const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
 
-// rotas userController
-router.post("/user", usuarioController.createUsuario);
+// Rotas do Usuário
+router.post("/user/cadastro", usuarioController.solicitarCodigo);
+router.post("/user/confirm", usuarioController.confirmarCodigo);
 router.post("/login", usuarioController.loginUsuario);
+router.post("/user/redefinir", usuarioController.solicitarRedefinicaoSenha);
+router.post("/user/reset-password", usuarioController.resetarSenha);
 router.get("/user/:id", usuarioController.getUsuarioById);
-router.get("/user", verifyJWT, usuarioController.getAllUsers);
+router.put("/user", upload.single("imagem"), verifyJWT, usuarioController.updateUserWithImage);
 router.delete("/user/:id", verifyJWT, usuarioController.deleteUser);
-router.put(
-  "/user",
-  verifyJWT,
-  upload.single("imagem"), // <- adiciona suporte a imagem
-  usuarioController.updateUserWithImage
-);
-router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
+// Rotas para imagem de perfil (se implementar a função getImagemPerfil)
+// router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
-// rotas para estabelecimento
+// Rotas para estabelecimentos
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
-// http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=restaurant
-// http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=park
-// http://localhost:3000/projeto_final/buscar?location=-20.5381,-47.4008&radius=17000&type=store
-
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
-// http://localhost:3000/projeto_final/buscar/ID
 
-
-
-// router avaliações
+// Rotas para avaliações
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);
 router.put("/avaliacao", verifyJWT, avaliacaoController.update);
-router.delete("/:id_avaliacao", verifyJWT, avaliacaoController.delete);
+router.delete("/avaliacao/:id_avaliacao", verifyJWT, avaliacaoController.delete);
 router.get("/avaliacao", verifyJWT, avaliacaoController.listByUser);
 
-
-
-// Favoritos
+// Rotas de favoritos
 router.post("/favoritos", verifyJWT, favoritosController.adicionaFavorito);
-// Lista todos os favoritos do usuário logado
-router.get("/favoritos/:id_usuario", verifyJWT, favoritosController.getFavoritos);
-// Para remover favorito
-router.delete(
-  "/favoritos/:id_favorito",
-  verifyJWT,
-  favoritosController.removeFavorito
-);
+router.get("/favoritos", verifyJWT, favoritosController.getFavoritos);
+router.delete("/favoritos/:id_favorito", verifyJWT, favoritosController.removeFavorito);
 
 module.exports = router;
