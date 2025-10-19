@@ -198,7 +198,7 @@ static async loginUsuario(req, res) {
         campos.push("senha = ?");
         valores.push(hashedPassword);
       } else if ((senha_atual && !nova_senha) || (!senha_atual && nova_senha)) {
-        return res.status(400).json({ error: "Para alterar a senha, envie senha_atual e nova_senha" });
+        return res.status(400).json({ error: "Para alterar a senha, envie a senha atual e a nova senha" });
       }
 
       // Atualiza email
