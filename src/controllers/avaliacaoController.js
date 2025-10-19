@@ -26,8 +26,8 @@ module.exports = class avaliacaoController {
         google_place_id,
         comentario,
         nota,
-        nome_estabelecimento || null,
-        endereco || null
+        nome_estabelecimento,
+        endereco
       ]);
 
       return res.status(201).json({
