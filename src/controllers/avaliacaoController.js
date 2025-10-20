@@ -6,9 +6,9 @@ module.exports = class avaliacaoController {
     const id_usuario = req.userId; // vem do JWT
     const { google_place_id, comentario, nota, nome_estabelecimento, endereco } = req.body;
 
-    if (!id_usuario || !google_place_id || !comentario || !nota) {
+    if (!id_usuario || !google_place_id || !comentario || !nota || !nome_estabelecimento || !endereco) {
       return res.status(400).json({
-        error: "Campos obrigatórios: google_place_id, comentario, nota (1-5)",
+        error: "Campos obrigatórios: google_place_id, comentario, nota (1-5), nome do estabelecimento, endereço",
       });
     }
 
