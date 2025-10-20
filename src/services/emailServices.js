@@ -33,23 +33,43 @@ function getEmailHTML(code, tipo) {
   }
 }
 
-// Função principal para enviar e-mail
-async function sendEmailWithCode(to, code, tipo) {
+// Função para enviar código de verificação
+async function sendVerificationEmail(to, code) {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to,
-    subject:
-      tipo === "verificacao" ? "Código de Verificação" : "Redefinição de Senha",
-    html: getEmailHTML(code, tipo),
+    subject: "Código de Verificação",
+    html: getEmailHTML(code, "verificacao"),
   };
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`E-mail (${tipo}) enviado para ${to}`);
+    console.log(`E-mail (verificação) enviado para ${to}`);
   } catch (err) {
     console.error("Erro ao enviar e-mail:", err);
     throw err;
   }
 }
 
-module.exports = { sendEmailWithCode };
+// Função para enviar código de redefinição de senha
+async function sendResetEmail(to, code) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to,
+    subject: "Redefinição de Senha",
+    html: getEmailHTML(code, "reset"),
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`E-mail (reset) enviado para ${to}`);
+  } catch (err) {
+    console.error("Erro ao enviar e-mail:", err);
+    throw err;
+  }
+}
+
+module.exports = {
+  sendVerificationEmail,
+  sendResetEmail,
+};

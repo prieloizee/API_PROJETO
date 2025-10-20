@@ -1,5 +1,5 @@
 ## Baixa e executa a imagem do node na versão Alpine (Versão Simplificada)
-FROM node:alpine
+FROM node:18-alpine
 
 
 ##docker-compose up --build
