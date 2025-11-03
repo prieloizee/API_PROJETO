@@ -8,6 +8,7 @@ const estabelecimentosController = require("../controllers/estabelecimentoContro
 const avaliacaoController = require("../controllers/avaliacaoController");
 const favoritosController = require("../controllers/favoritosController");
 
+
 // Rotas do Usuário
 router.post("/user", usuarioController.solicitarCodigo);
 router.post("/user/confirm", usuarioController.confirmarCodigo);
@@ -25,6 +26,8 @@ router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 // Rotas para estabelecimentos
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
+
+
 
 // Rotas para avaliações
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);

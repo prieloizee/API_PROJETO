@@ -2,59 +2,62 @@ const { buscarEstabelecimentosGoogle, buscarDetalhesEstabelecimento } = require(
 const pool = require("../db/connect").promise();
 
 module.exports = class EstabelecimentoController {
-  // Buscar lista de estabelecimentos
+  // 🔹 Buscar lista de estabelecimentos
   static async buscarEstabelecimentos(req, res) {
     const { location, radius, type } = req.query;
 
     if (!location || !radius || !type) {
-      return res
-        .status(400)
-        .json({ message: "Parâmetros obrigatórios: location, radius e type" });
+      return res.status(400).json({
+        message: "Parâmetros obrigatórios: location, radius e type",
+      });
     }
 
     try {
-      const estabelecimentosBrutos = (await buscarEstabelecimentosGoogle(
-        location,
-        radius,
-        type
-      )).slice(0, 60);      
-      const resultados = [];
+      // 🔹 Buscar estabelecimentos no Google e limitar resultados
+      const estabelecimentosBrutos = (await buscarEstabelecimentosGoogle(location, radius, type)).slice(0, 2);
 
-      for (const est of estabelecimentosBrutos) {
+      // 🔹 Buscar detalhes e avaliações em paralelo
+      const promessas = estabelecimentosBrutos.map(async (est) => {
         try {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
-          const enderecoCompleto = detalhes?.formatted_address || est.vicinity;
+          if (!detalhes) return null;
 
-          if (!enderecoCompleto.toLowerCase().includes("franca")) continue;
+          const enderecoCompleto = detalhes.formatted_address || est.vicinity || "";
+          if (!enderecoCompleto.toLowerCase().includes("franca")) return null;
 
-          // Buscar avaliações
-          const [avaliacoes] = await pool.query(
-            `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
-             FROM avaliacoes
-             WHERE google_place_id = ?
-             ORDER BY created_at DESC`,
-            [est.place_id]
-          );
+          // 🔹 Buscar dados do banco em paralelo
+          const [avaliacoesPromise, mediaPromise] = await Promise.all([
+            pool.query(
+              `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
+               FROM avaliacoes
+               WHERE google_place_id = ?
+               ORDER BY created_at DESC`,
+              [est.place_id]
+            ),
+            pool.query(
+              `SELECT AVG(nota) as media_notas, COUNT(*) as total_avaliacoes
+               FROM avaliacoes
+               WHERE google_place_id = ?`,
+              [est.place_id]
+            ),
+          ]);
 
-          // Média das notas e total de avaliações
-          const [media] = await pool.query(
-            `SELECT AVG(nota) as media_notas, COUNT(*) as total_avaliacoes
-             FROM avaliacoes
-             WHERE google_place_id = ?`,
-            [est.place_id]
-          );
+          const avaliacoes = avaliacoesPromise[0];
+          const media = mediaPromise[0][0];
 
-          const categoriaValida = detalhes.types?.find(
-            t => t !== "establishment" && t !== "point_of_interest"
-          ) || req.query.type || "Não especificada";
+          const categoriaValida =
+            detalhes.types?.find(
+              (t) => t !== "establishment" && t !== "point_of_interest"
+            ) || type || "Não especificada";
 
-          const mediaNotas =
-            media[0]?.media_notas !== null
-              ? parseFloat(parseFloat(media[0].media_notas).toFixed(1))
-              : null;
-          const totalAvaliacoes = media[0]?.total_avaliacoes || 0;
+          // ✅ Corrigido: conversão segura de média para número
+          const mediaNotas = media.media_notas
+            ? parseFloat(Number(media.media_notas).toFixed(1))
+            : null;
 
-          const estFormatado = {
+          const totalAvaliacoes = media.total_avaliacoes || 0;
+
+          return {
             place_id: est.place_id,
             nome: detalhes.name,
             endereco: detalhes.formatted_address,
@@ -68,12 +71,19 @@ module.exports = class EstabelecimentoController {
             horarios: detalhes.opening_hours?.weekday_text || [],
             avaliacoes: avaliacoes || [],
           };
-
-          resultados.push(estFormatado);
         } catch (err) {
           console.error("Erro ao processar estabelecimento", est.place_id, err);
+          return null;
         }
-      }
+      });
+
+      // 🔹 Executar tudo em paralelo (sem interromper se uma falhar)
+      const resultadosBrutos = await Promise.allSettled(promessas);
+
+      // 🔹 Filtrar só os bem-sucedidos
+      const resultados = resultadosBrutos
+        .filter((r) => r.status === "fulfilled" && r.value !== null)
+        .map((r) => r.value);
 
       return res.status(200).json({
         message: "Busca concluída com sucesso",
@@ -81,14 +91,12 @@ module.exports = class EstabelecimentoController {
         estabelecimentos: resultados,
       });
     } catch (err) {
-      console.error(err);
-      return res
-        .status(500)
-        .json({ message: "Erro interno", error: err.message });
+      console.error("Erro geral:", err);
+      return res.status(500).json({ message: "Erro interno", error: err.message });
     }
   }
 
-  // Buscar detalhes por place_id + avaliações
+  // 🔹 Buscar detalhes por place_id + avaliações
   static async buscarPorId(req, res) {
     let { id } = req.params;
     if (!id)
@@ -103,26 +111,30 @@ module.exports = class EstabelecimentoController {
           .status(404)
           .json({ message: "Estabelecimento não encontrado" });
 
-      const [avaliacoes] = await pool.query(
-        `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
-         FROM avaliacoes
-         WHERE LOWER(google_place_id) = LOWER(?)
-         ORDER BY created_at DESC`,
-        [id]
-      );
+      // 🔹 Executar queries de avaliações em paralelo
+      const [avaliacoesPromise, mediaPromise] = await Promise.all([
+        pool.query(
+          `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
+           FROM avaliacoes
+           WHERE LOWER(google_place_id) = LOWER(?)
+           ORDER BY created_at DESC`,
+          [id]
+        ),
+        pool.query(
+          `SELECT AVG(nota) as media_notas, COUNT(*) as total_avaliacoes
+           FROM avaliacoes
+           WHERE LOWER(google_place_id) = LOWER(?)`,
+          [id]
+        ),
+      ]);
 
-      const [media] = await pool.query(
-        `SELECT AVG(nota) as media_notas, COUNT(*) as total_avaliacoes
-         FROM avaliacoes
-         WHERE LOWER(google_place_id) = LOWER(?)`,
-        [id]
-      );
+      const avaliacoes = avaliacoesPromise[0];
+      const media = mediaPromise[0][0];
 
-      const mediaNotas =
-        media[0]?.media_notas !== null
-          ? parseFloat(parseFloat(media[0].media_notas).toFixed(1))
-          : null;
-      const totalAvaliacoes = media[0]?.total_avaliacoes || 0;
+      const mediaNotas = media.media_notas
+        ? parseFloat(Number(media.media_notas).toFixed(1))
+        : null;
+      const totalAvaliacoes = media.total_avaliacoes || 0;
 
       return res.status(200).json({
         place_id: id,
@@ -145,5 +157,4 @@ module.exports = class EstabelecimentoController {
         .json({ message: "Erro interno do servidor", error: err.message });
     }
   }
-  
 };
