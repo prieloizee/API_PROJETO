@@ -12,9 +12,7 @@ class UsuarioController {
       const { nome, email, senha, confirmarSenha, cpf } = req.body;
 
       if (!nome || !email || !senha || !confirmarSenha || !cpf) {
-        return res
-          .status(400)
-          .json({ error: "Todos os campos são obrigatórios." });
+        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
       }
 
       if (senha !== confirmarSenha) {
@@ -44,14 +42,10 @@ class UsuarioController {
       // Envia e-mail com o código
       await emailService.sendVerificationEmail(email, codigo);
 
-      return res
-        .status(200)
-        .json({ message: "Código de verificação enviado para o seu e-mail." });
+      return res.status(200).json({ message: "Código de verificação enviado para o seu e-mail." });
     } catch (err) {
       console.error("Erro ao solicitar código:", err);
-      return res
-        .status(500)
-        .json({ error: "Erro interno ao enviar o código." });
+      return res.status(500).json({ error: "Erro interno ao enviar o código." });
     }
   }
 
@@ -61,9 +55,7 @@ class UsuarioController {
       const { email, code } = req.body;
 
       if (!email || !code) {
-        return res
-          .status(400)
-          .json({ error: "Todos os campos são obrigatórios." });
+        return res.status(400).json({ error: "Todos os campos são obrigatórios." });
       }
 
       const [rows] = await connect.execute(
@@ -91,66 +83,58 @@ class UsuarioController {
       // Remove dados temporários
       await connect.execute("DELETE FROM temp_users WHERE email = ?", [email]);
 
-      return res
-        .status(201)
-        .json({ message: "Usuário criado e e-mail confirmado com sucesso!" });
+      return res.status(201).json({ message: "Usuário criado e e-mail confirmado com sucesso!" });
     } catch (err) {
       console.error("Erro ao confirmar código:", err);
-      return res
-        .status(500)
-        .json({ error: "Erro interno ao confirmar código." });
+      return res.status(500).json({ error: "Erro interno ao confirmar código." });
     }
   }
 
-// Login
-static async loginUsuario(req, res) {
-  try {
-    const { email, senha } = req.body;
+  // Login
+  static async loginUsuario(req, res) {
+    try {
+      const { email, senha } = req.body;
 
-    if (!email || !senha) {
-      return res
-        .status(400)
-        .json({ error: "Email e senha são obrigatórios." });
+      if (!email || !senha) {
+        return res.status(400).json({ error: "Email e senha são obrigatórios." });
+      }
+
+      const [rows] = await connect.execute(
+        "SELECT * FROM usuario WHERE email = ?",
+        [email]
+      );
+      if (rows.length === 0) {
+        return res.status(401).json({ error: "Usuário não encontrado." });
+      }
+
+      const user = rows[0];
+      const senhaCorreta = await bcrypt.compare(senha, user.senha);
+      if (!senhaCorreta) {
+        return res.status(401).json({ error: "Senha incorreta." });
+      }
+
+      const token = jwt.sign(
+        { id_usuario: user.id_usuario },
+        process.env.SECRET,
+        { expiresIn: "1h" }
+      );
+
+      const userData = {
+        id_usuario: user.id_usuario,
+        nome: user.nome,
+        email: user.email,
+      };
+
+      return res.status(200).json({
+        message: "Login bem-sucedido!",
+        user: userData,
+        token,
+      });
+    } catch (err) {
+      console.error("Erro no login:", err);
+      return res.status(500).json({ error: "Erro interno no servidor." });
     }
-
-    const [rows] = await connect.execute(
-      "SELECT * FROM usuario WHERE email = ?",
-      [email]
-    );
-    if (rows.length === 0) {
-      return res.status(401).json({ error: "Usuário não encontrado." });
-    }
-
-    const user = rows[0];
-    const senhaCorreta = await bcrypt.compare(senha, user.senha);
-    if (!senhaCorreta) {
-      return res.status(401).json({ error: "Senha incorreta." });
-    }
-
-    const token = jwt.sign(
-      { id_usuario: user.id_usuario },
-      process.env.SECRET,
-      { expiresIn: "1h" }
-    );
-
-
-    const userData = {
-      id_usuario: user.id_usuario,
-      nome: user.nome,
-      email: user.email,
-    };
-
-    return res.status(200).json({
-      message: "Login bem-sucedido!",
-      user: userData,
-      token,
-    });
-  } catch (err) {
-    console.error("Erro no login:", err);
-    return res.status(500).json({ error: "Erro interno no servidor." });
   }
-}
-
 
   // Atualizar usuário com imagem
   static async updateUserWithImage(req, res) {
@@ -198,7 +182,7 @@ static async loginUsuario(req, res) {
         campos.push("senha = ?");
         valores.push(hashedPassword);
       } else if ((senha_atual && !nova_senha) || (!senha_atual && nova_senha)) {
-        return res.status(400).json({ error: "Para alterar a senha, envie senha_atual e nova_senha" });
+        return res.status(400).json({ error: "Para alterar a senha, envie a senha atual e a nova senha" });
       }
 
       // Atualiza email
@@ -254,7 +238,8 @@ static async loginUsuario(req, res) {
         [email, codigo, expiracao]
       );
 
-      await emailService.sendVerificationEmail(email, codigo);
+      // **Aqui chama o envio do e-mail de reset (não verificação)**
+      await emailService.sendResetEmail(email, codigo);
 
       return res.status(200).json({ message: "Código de redefinição enviado para o seu e-mail." });
     } catch (err) {
@@ -264,70 +249,59 @@ static async loginUsuario(req, res) {
   }
 
   // Resetar senha com código
-
   static async resetarSenha(req, res) {
     try {
       const { email, code, novaSenha } = req.body;
       if (!email || !code || !novaSenha)
         return res.status(400).json({ error: "Todos os campos são obrigatórios." });
 
+      // 1. Verifica se o código de redefinição é válido
       const [rows] = await connect.execute(
         "SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?",
         [email, code]
       );
 
-      if (rows.length === 0) return res.status(400).json({ error: "Código inválido." });
+      if (rows.length === 0) {
+        return res.status(400).json({ error: "Código inválido." });
+      }
 
+      const registro = rows[0];
+      if (new Date() > new Date(registro.expiracao)) {
+        await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
+        return res.status(400).json({ error: "Código expirado. Solicite outro." });
+      }
 
-    // 🔹 1. Verifica se o código de redefinição é válido
-    const [rows] = await connect.execute(
-      "SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?",
-      [email, code]
-    );
+      // 2. Busca a senha atual do usuário
+      const [usuarioRows] = await connect.execute(
+        "SELECT senha FROM usuario WHERE email = ?",
+        [email]
+      );
 
-    if (rows.length === 0) {
-      return res.status(400).json({ error: "Código inválido." });
-    }
+      if (usuarioRows.length === 0) {
+        return res.status(404).json({ error: "Usuário não encontrado." });
+      }
 
-    const registro = rows[0];
-    if (new Date() > new Date(registro.expiracao)) {
+      const senhaAtualHash = usuarioRows[0].senha;
+
+      // 3. Verifica se a nova senha é igual à atual
+      const ehMesmaSenha = await bcrypt.compare(novaSenha, senhaAtualHash);
+      if (ehMesmaSenha) {
+        return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual." });
+      }
+
+      // 4. Atualiza a senha com o novo hash
+      const novaSenhaHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
+      await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [novaSenhaHash, email]);
+
+      // 5. Remove o código de redefinição
       await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
-      return res.status(400).json({ error: "Código expirado. Solicite outro." });
+
+      return res.status(200).json({ message: "Senha alterada com sucesso!" });
+    } catch (err) {
+      console.error("Erro ao redefinir senha:", err);
+      return res.status(500).json({ error: "Erro interno ao redefinir senha." });
     }
-
-    // 🔹 2. Busca a senha atual do usuário
-    const [usuarioRows] = await connect.execute(
-      "SELECT senha FROM usuario WHERE email = ?",
-      [email]
-    );
-
-    if (usuarioRows.length === 0) {
-      return res.status(404).json({ error: "Usuário não encontrado." });
-    }
-
-    const senhaAtualHash = usuarioRows[0].senha;
-
-    // 🔹 3. Verifica se a nova senha é igual à atual
-    const ehMesmaSenha = await bcrypt.compare(novaSenha, senhaAtualHash);
-    if (ehMesmaSenha) {
-      return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual." });
-    }
-
-    // 🔹 4. Atualiza a senha com o novo hash
-    const novaSenhaHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
-    await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [novaSenhaHash, email]);
-
-    // 🔹 5. Remove o código de redefinição
-    await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
-
-    return res.status(200).json({ message: "Senha alterada com sucesso!" });
-  } catch (err) {
-    console.error("Erro ao redefinir senha:", err);
-    return res.status(500).json({ error: "Erro interno ao redefinir senha." });
   }
-}
-
-
 
   // Buscar usuário por ID
   static async getUsuarioById(req, res) {
