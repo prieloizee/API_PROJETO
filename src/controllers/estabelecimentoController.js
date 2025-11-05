@@ -2,7 +2,7 @@ const { buscarEstabelecimentosGoogle, buscarDetalhesEstabelecimento } = require(
 const pool = require("../db/connect").promise();
 
 module.exports = class EstabelecimentoController {
-  // 🔹 Buscar lista de estabelecimentos
+ 
   static async buscarEstabelecimentos(req, res) {
     const { location, radius, type } = req.query;
 
@@ -13,10 +13,10 @@ module.exports = class EstabelecimentoController {
     }
 
     try {
-      // 🔹 Buscar estabelecimentos no Google e limitar resultados
+   
       const estabelecimentosBrutos = (await buscarEstabelecimentosGoogle(location, radius, type)).slice(0, 2);
 
-      // 🔹 Buscar detalhes e avaliações em paralelo
+     
       const promessas = estabelecimentosBrutos.map(async (est) => {
         try {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
@@ -25,7 +25,6 @@ module.exports = class EstabelecimentoController {
           const enderecoCompleto = detalhes.formatted_address || est.vicinity || "";
           if (!enderecoCompleto.toLowerCase().includes("franca")) return null;
 
-          // 🔹 Buscar dados do banco em paralelo
           const [avaliacoesPromise, mediaPromise] = await Promise.all([
             pool.query(
               `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
@@ -50,7 +49,7 @@ module.exports = class EstabelecimentoController {
               (t) => t !== "establishment" && t !== "point_of_interest"
             ) || type || "Não especificada";
 
-          // ✅ Corrigido: conversão segura de média para número
+        
           const mediaNotas = media.media_notas
             ? parseFloat(Number(media.media_notas).toFixed(1))
             : null;
@@ -77,10 +76,10 @@ module.exports = class EstabelecimentoController {
         }
       });
 
-      // 🔹 Executar tudo em paralelo (sem interromper se uma falhar)
+      
       const resultadosBrutos = await Promise.allSettled(promessas);
 
-      // 🔹 Filtrar só os bem-sucedidos
+    
       const resultados = resultadosBrutos
         .filter((r) => r.status === "fulfilled" && r.value !== null)
         .map((r) => r.value);
@@ -96,7 +95,7 @@ module.exports = class EstabelecimentoController {
     }
   }
 
-  // 🔹 Buscar detalhes por place_id + avaliações
+  
   static async buscarPorId(req, res) {
     let { id } = req.params;
     if (!id)
@@ -111,7 +110,7 @@ module.exports = class EstabelecimentoController {
           .status(404)
           .json({ message: "Estabelecimento não encontrado" });
 
-      // 🔹 Executar queries de avaliações em paralelo
+     
       const [avaliacoesPromise, mediaPromise] = await Promise.all([
         pool.query(
           `SELECT id_avaliacao, id_usuario, comentario, nota, created_at

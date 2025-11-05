@@ -4,9 +4,7 @@ CREATE DATABASE IF NOT EXISTS `projeto_final`
 
 USE `projeto_final`;
 
--- =============================
--- Tabela USUARIO
--- =============================
+
 DROP TABLE IF EXISTS `usuario`;
 CREATE TABLE `usuario` (
   `id_usuario` INT NOT NULL AUTO_INCREMENT,
@@ -24,27 +22,8 @@ CREATE TABLE `usuario` (
   UNIQUE KEY `cpf` (`cpf`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- =============================
--- Tabela ESTABELECIMENTOS
--- =============================
-DROP TABLE IF EXISTS `estabelecimentos`;
-CREATE TABLE `estabelecimentos` (
-  `place_id` VARCHAR(100) NOT NULL,
-  `nome` VARCHAR(255) NOT NULL,
-  `endereco` VARCHAR(255) NOT NULL,
-  `categoria` VARCHAR(100) DEFAULT NULL,
-  `telefone` VARCHAR(50) DEFAULT NULL,
-  `site` VARCHAR(255) DEFAULT NULL,
-  `latitude` DECIMAL(10,7) DEFAULT NULL,
-  `longitude` DECIMAL(10,7) DEFAULT NULL,
-  `criado_em` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  `atualizado_em` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`place_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- =============================
--- Tabela AVALIACOES
--- =============================
+
 DROP TABLE IF EXISTS `avaliacoes`;
 CREATE TABLE `avaliacoes` (
   `id_avaliacao` INT NOT NULL AUTO_INCREMENT,
@@ -63,9 +42,7 @@ CREATE TABLE `avaliacoes` (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- =============================
--- Tabela FAVORITOS
--- =============================
+
 DROP TABLE IF EXISTS `favoritos`;
 CREATE TABLE `favoritos` (
   `id_favorito` INT NOT NULL AUTO_INCREMENT,
@@ -82,28 +59,8 @@ CREATE TABLE `favoritos` (
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- =============================
--- Tabela HORARIOS
--- =============================
-DROP TABLE IF EXISTS `horarios`;
-CREATE TABLE `horarios` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `place_id` VARCHAR(100) NOT NULL,
-  `dia_semana` VARCHAR(50) NOT NULL,
-  `horario` VARCHAR(50) NOT NULL,
-  `criado_em` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  `atualizado_em` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `place_id` (`place_id`),
-  CONSTRAINT `horarios_ibfk_1`
-    FOREIGN KEY (`place_id`)
-    REFERENCES `estabelecimentos` (`place_id`)
-    ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- =============================
--- Tabelas temporárias auxiliares
--- =============================
+
 CREATE TABLE IF NOT EXISTS `temp_email_codes` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `email` VARCHAR(255) NOT NULL,
