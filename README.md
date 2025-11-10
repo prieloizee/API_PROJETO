@@ -79,6 +79,12 @@ mysql-init/init.sql
 - **PUT** /**avaliacao/ →** Atualiza os dados da avaliação
 - **DELETE** /**avaliacao/:id_avaliacao→** Remove a avaliação
 
+  ### Favoritos (`/favoritos`)
+
+- **POST /favorito/** → Adiciona uma favorito
+- **GET /favorito/** → Lista favoritos de um usuario
+- **DELETE** /**favorito/:id_favorito→** Remove um favorito
+
 ---
 
 ## Execução sem Docker (opcional)
