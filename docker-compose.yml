@@ -1,33 +1,27 @@
-version: "3.8"
+version: "3"
 
-services: 
+services:
   app:
-    ## O "." indica que a imagem do Docker será construída no Diretório atual
-    build: . 
-    ## Acessa o shell do linux (/bin/sh)
-    command: /bin/sh -c "npm install && npm start"
+    build: . # Usa o Dockerfile local para buildar a imagem
+    command: /bin/sh -c "npm install && npm rebuild bcrypt --build-from-source && npm start"
     ports:
-    ## Mapeia a porta 5000 do container para a porta 5000 da máquina
-      - "3000:3000"
-    ## Monta o diretório atual da máquina host no diretório /usr/app dentro do container
+      - "3000:3000" # Mapeia a porta 5000 do container para a porta 3000 da máquina
     volumes:
-      - .:/usr/app
+      - .:/usr/app # Monta o diretório da máquina no container
       - /etc/letsencrypt:/etc/letsencrypt # Monta o volume dos certificados
     working_dir: /usr/app # Define o diretório de trabalho dentro do container
-    ## Indica que o serviço app depende do serviço db
     depends_on:
-      - db
+      - db # O serviço app depende do serviço db
+
   db:
-    image: mysql:8.0
-    ## Configura o container para reiniciar automaticamente caso ele pare
+    image: mysql:5.7
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: projeto_final
-    ## Mapeia a porta 3306 do container para a porta 3306 da máquina
     ports:
-      - "3308:3308"
-    volumes: 
+      - "3306:3307" # Corrigir para 3306:3307
+    volumes:
       - db_data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
 

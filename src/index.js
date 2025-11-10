@@ -1,37 +1,23 @@
-// index.js
-const express = require("express");
-const cors = require("cors");
-require("dotenv-safe").config();
-const testConnect = require("./db/testConnect"); // importando a função
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const app = require("./index");
 
-class AppController {
-  constructor() {
-    this.express = express();
-    this.middlewares();
-    this.routes();
+// Opções para o HTTPS com os certificados gerados
+const options = {
+  key: fs.readFileSync('/etc/letsencrypt/live/glimp.canadacentral.cloudapp.azure.com/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/glimp.canadacentral.cloudapp.azure.com/fullchain.pem')
+};
 
-    // Testa a conexão ao iniciar a aplicação
-    testConnect();
-  }
+// Iniciar o servidor HTTPS na porta 5000
+https.createServer(options, app).listen(3000, () => {
+  console.log('Servidor HTTPS rodando na porta 3000');
+});
 
-  middlewares() {
-    this.express.use(express.json());
-    this.express.use(cors());
-  }
-
-  routes() {
-    // Aqui você coloca suas rotas
-    const apiRoutes = require("./routes/apiRoutes"); // ajuste para seu arquivo de rotas
-    this.express.use("/projeto_final/", apiRoutes);
-  }
-}
-
-// Exporta a instância do Express configurada
-module.exports = new AppController().express;
-
-// Se quiser iniciar diretamente sem outro arquivo:
-if (require.main === module) {
-  const app = new AppController().express;
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-}
+// (Opcional) Redirecionar HTTP para HTTPS
+http.createServer((req, res) => {
+  res.writeHead(301, { "Location": `https://${req.headers.host}${req.url}` });
+  res.end();
+}).listen(80, () => {
+  console.log('Redirecionamento HTTP para HTTPS habilitado na porta 80');
+});
