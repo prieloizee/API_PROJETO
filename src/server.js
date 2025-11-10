@@ -9,9 +9,9 @@ const options = {
   cert: fs.readFileSync('/etc/letsencrypt/live/glimp.canadacentral.cloudapp.azure.com/fullchain.pem')
 };
 
-// Iniciar o servidor HTTPS na porta 5000
-https.createServer(options, app).listen(5000, () => {
-  console.log('Servidor HTTPS rodando na porta 5000');
+// Iniciar o servidor HTTPS na porta 3000
+https.createServer(options, app).listen(3000, () => {
+  console.log('Servidor HTTPS rodando na porta 3000');
 });
 
 // (Opcional) Redirecionar HTTP para HTTPS
