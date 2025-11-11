@@ -61,11 +61,17 @@ mysql-init/init.sql
 ### Usuários (`/user`)
 
 - **POST /user/** → Cria um novo usuário
+- **POST /user/confirm** → Envia um código de verificação
 - **POST /user/login** → Realiza login
+- **POST /user/login/redefinir** → Envia um código de redefinir senha
+- **POST /user/login/reset-password** → Envia um código de resetar senha
 - **GET /user/** → Lista todos os usuários
 - **GET /user/:id** → Busca usuário por ID
 - **PUT /user/:id** → Atualiza dados do usuário
 - **DELETE /user/:id** → Remove um usuário
+- **GET /user/:id/:imagem** → pega a imagem do usuário
+
+
 
 ### Estabelecimentos (`/estabelecimento`)
 
@@ -76,8 +82,9 @@ mysql-init/init.sql
 
 - **POST /avaliacao/** → Adiciona uma avaliação
 - **GET /avaliacao/:id_place** → Lista avaliações de um estabelecimento
-- **PUT** /**avaliacao/ →** Atualiza os dados da avaliação
-- **DELETE** /**avaliacao/:id_avaliacao→** Remove a avaliação
+- **DELETE /avaliacao/:id_avaliacao** → Remove a avaliação
+- **GET /avaliacao/** → Lista avaliações de um usuário
+
 
   ### Favoritos (`/favoritos`)
 
