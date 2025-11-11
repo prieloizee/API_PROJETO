@@ -12,6 +12,8 @@ services:
     ## Monta o diretório atual da máquina host no diretório /usr/app dentro do container
     volumes:
       - .:/usr/app
+      - /etc/letsencrypt:/etc/letsencrypt # Monta o volume dos certificados
+    working_dir: /usr/app # Define o diretório de trabalho dentro do container
     ## Indica que o serviço app depende do serviço db
     depends_on:
       - db
@@ -24,7 +26,7 @@ services:
       MYSQL_DATABASE: projeto_final
     ## Mapeia a porta 3306 do container para a porta 3306 da máquina
     ports:
-      - "3308:3308"
+      - "3306:3306"
     volumes: 
       - db_data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d

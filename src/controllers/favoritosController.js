@@ -29,11 +29,11 @@ module.exports = class FavoritosController {
       });
   
     } catch (error) {
-      // Captura erro de duplicidade
+      // erro de duplicidade
       if (error.code === 'ER_DUP_ENTRY') {
         return res.status(400).json({ message: "Você já adicionou este estabelecimento aos favoritos" });
       }
-      // Outros erros
+      
       console.error("Erro ao adicionar favorito:", error);
       return res.status(500).json({ message: "Erro interno", error });
     }
@@ -64,7 +64,6 @@ module.exports = class FavoritosController {
     }
   }
 
-  // Remover favorito
   static async removeFavorito(req, res) {
     const id_favorito = Number(req.params.id_favorito);
     const id_usuario = req.userId;

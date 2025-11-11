@@ -19,7 +19,6 @@ class UsuarioController {
         return res.status(400).json({ error: "As senhas não conferem." });
       }
 
-      // Verifica se email ou CPF já estão cadastrados
       const [existente] = await connect.execute(
         "SELECT * FROM usuario WHERE email = ? OR cpf = ?",
         [email, cpf]
@@ -90,7 +89,6 @@ class UsuarioController {
     }
   }
 
-  // Login
   static async loginUsuario(req, res) {
     try {
       const { email, senha } = req.body;
@@ -217,7 +215,7 @@ class UsuarioController {
     }
   }
 
-  // Solicitar redefinição de senha (esqueceu senha)
+  // Solicitar redefinição de senha 
   static async solicitarRedefinicaoSenha(req, res) {
     try {
       const { email } = req.body;
@@ -238,7 +236,7 @@ class UsuarioController {
         [email, codigo, expiracao]
       );
 
-      // **Aqui chama o envio do e-mail de reset (não verificação)**
+      // chama o envio do e-mail de reset (não verificação)
       await emailService.sendResetEmail(email, codigo);
 
       return res.status(200).json({ message: "Código de redefinição enviado para o seu e-mail." });
@@ -255,7 +253,7 @@ class UsuarioController {
       if (!email || !code || !novaSenha)
         return res.status(400).json({ error: "Todos os campos são obrigatórios." });
 
-      // 1. Verifica se o código de redefinição é válido
+      //Verifica se o código de redefinição é válido
       const [rows] = await connect.execute(
         "SELECT * FROM temp_reset_codes WHERE email = ? AND code = ?",
         [email, code]
@@ -271,7 +269,7 @@ class UsuarioController {
         return res.status(400).json({ error: "Código expirado. Solicite outro." });
       }
 
-      // 2. Busca a senha atual do usuário
+      // Busca a senha atual do usuário
       const [usuarioRows] = await connect.execute(
         "SELECT senha FROM usuario WHERE email = ?",
         [email]
@@ -283,17 +281,16 @@ class UsuarioController {
 
       const senhaAtualHash = usuarioRows[0].senha;
 
-      // 3. Verifica se a nova senha é igual à atual
       const ehMesmaSenha = await bcrypt.compare(novaSenha, senhaAtualHash);
       if (ehMesmaSenha) {
         return res.status(400).json({ error: "A nova senha não pode ser igual à senha atual." });
       }
 
-      // 4. Atualiza a senha com o novo hash
+      // Atualiza a senha com o novo hash
       const novaSenhaHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
       await connect.execute("UPDATE usuario SET senha = ? WHERE email = ?", [novaSenhaHash, email]);
 
-      // 5. Remove o código de redefinição
+     
       await connect.execute("DELETE FROM temp_reset_codes WHERE email = ?", [email]);
 
       return res.status(200).json({ message: "Senha alterada com sucesso!" });
@@ -303,7 +300,6 @@ class UsuarioController {
     }
   }
 
-  // Buscar usuário por ID
   static async getUsuarioById(req, res) {
     try {
       const { id } = req.params;
@@ -323,7 +319,7 @@ class UsuarioController {
     }
   }
 
-  // Deletar usuário
+
   static async deleteUser(req, res) {
     try {
       const { id } = req.params;

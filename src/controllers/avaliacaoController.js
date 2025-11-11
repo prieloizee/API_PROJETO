@@ -1,9 +1,9 @@
 const pool = require("../db/connect").promise();
 
 module.exports = class avaliacaoController {
-  // Criar avaliação (comentário + nota + nome_estabelecimento)
+
   static async create(req, res) {
-    const id_usuario = req.userId; // vem do JWT
+    const id_usuario = req.userId; 
     const { google_place_id, comentario, nota, nome_estabelecimento, endereco } = req.body;
 
     if (!id_usuario || !google_place_id || !comentario || !nota || !nome_estabelecimento || !endereco) {
@@ -40,7 +40,7 @@ module.exports = class avaliacaoController {
     }
   }
 
-  // Listar avaliações por usuário
+
   static async listByUser(req, res) {
     const id_usuario = req.userId; // vem do JWT
 
@@ -107,45 +107,8 @@ module.exports = class avaliacaoController {
     }
   }
 
-  // Atualizar avaliação (comentário e/ou nota)
-  static async update(req, res) {
-    const { id_avaliacao, comentario, nota } = req.body;
 
-    if (!id_avaliacao || (!comentario && nota === undefined)) {
-      return res.status(400).json({
-        error: "Campos obrigatórios: id_avaliacao e (comentario ou nota)",
-      });
-    }
-    
-    const fields = [];
-    const values = [];
 
-    if (comentario) {
-      fields.push("comentario = ?");
-      values.push(comentario);
-    }
-    if (nota !== undefined) {
-      fields.push("nota = ?");
-      values.push(nota);
-    }
-
-    values.push(id_avaliacao);
-
-    const query = `UPDATE avaliacoes SET ${fields.join(", ")} WHERE id_avaliacao = ?`;
-
-    try {
-      pool.query(query, values, (err, result) => {
-        if (err) return res.status(500).json({ error: err });
-        if (result.affectedRows === 0)
-          return res.status(404).json({ error: "Avaliação não encontrada" });
-        return res.status(200).json({ message: "Avaliação atualizada com sucesso" });
-      });
-    } catch (error) {
-      return res.status(500).json({ error });
-    }
-  }
-
-  // Deletar avaliação
 static async delete(req, res) {
   const { id_avaliacao } = req.params;
 

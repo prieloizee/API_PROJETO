@@ -2,13 +2,10 @@ const { buscarEstabelecimentosGoogle, buscarDetalhesEstabelecimento } = require(
 const pool = require("../db/connect").promise();
 
 module.exports = class EstabelecimentoController {
-  /**
-   * 🔹 Buscar lista de estabelecimentos (Nearby Search ou Text Search)
-   */
   static async buscarEstabelecimentos(req, res) {
     const { location, radius, type, query } = req.query;
 
-    // 🔸 Se não for busca por texto, valida parâmetros obrigatórios
+    // Se não for busca por texto, valida parâmetros obrigatórios
     if (!query && (!location || !radius || !type)) {
       return res.status(400).json({
         message: "Parâmetros obrigatórios: location, radius e type (ou query para busca por texto).",
@@ -16,22 +13,21 @@ module.exports = class EstabelecimentoController {
     }
 
     try {
-      // 🔹 Chama o serviço (usa Text Search se query existir)
+      // Chama o serviço (usa Text Search se query existir)
       const estabelecimentosBrutos = (
         await buscarEstabelecimentosGoogle(location, radius, type, query)
-      ).slice(0, 2); // limite inicial para performance
+      ).slice(0, 2); 
 
-      // 🔹 Processa cada resultado para adicionar detalhes e avaliações
+      // Processa cada resultado para adicionar detalhes e avaliações
       const promessas = estabelecimentosBrutos.map(async (est) => {
         try {
           const detalhes = await buscarDetalhesEstabelecimento(est.place_id);
           if (!detalhes) return null;
 
           const enderecoCompleto = detalhes.formatted_address || est.vicinity || "";
-          // 🔸 Mantém apenas resultados de Franca (ajuste se quiser retirar o filtro)
+       
           if (!enderecoCompleto.toLowerCase().includes("franca")) return null;
 
-          // 🔹 Busca avaliações e médias no banco
           const [avaliacoesPromise, mediaPromise] = await Promise.all([
             pool.query(
               `SELECT id_avaliacao, id_usuario, comentario, nota, created_at
@@ -99,9 +95,7 @@ module.exports = class EstabelecimentoController {
     }
   }
 
-  /**
-   * 🔹 Buscar estabelecimento por ID (place_id)
-   */
+
   static async buscarPorId(req, res) {
     let { id } = req.params;
     if (!id)
@@ -116,7 +110,7 @@ module.exports = class EstabelecimentoController {
           .status(404)
           .json({ message: "Estabelecimento não encontrado" });
 
-      // 🔹 Busca avaliações e médias
+      // Busca avaliações e médias
       const [avaliacoesPromise, mediaPromise] = await Promise.all([
         pool.query(
           `SELECT id_avaliacao, id_usuario, comentario, nota, created_at

@@ -22,7 +22,6 @@ router.get("/user", verifyJWT, usuarioController.getAllUsers);
 router.get("/user/:id/imagem", usuarioController.getImagemPerfil);
 
 
-
 // Rotas para estabelecimentos
 router.get("/buscar", estabelecimentosController.buscarEstabelecimentos);
 router.get("/buscar/:id", estabelecimentosController.buscarPorId);
@@ -32,7 +31,6 @@ router.get("/buscar/:id", estabelecimentosController.buscarPorId);
 // Rotas para avaliações
 router.post("/avaliacao", verifyJWT, avaliacaoController.create);
 router.get("/avaliacoes/:google_place_id", avaliacaoController.listByPlace);
-router.put("/avaliacao", verifyJWT, avaliacaoController.update);
 router.delete("/avaliacao/:id_avaliacao", verifyJWT, avaliacaoController.delete);
 router.get("/avaliacao", verifyJWT, avaliacaoController.listByUser);
 
