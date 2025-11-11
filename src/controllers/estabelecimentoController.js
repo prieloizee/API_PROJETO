@@ -16,7 +16,7 @@ module.exports = class EstabelecimentoController {
       // Chama o serviço (usa Text Search se query existir)
       const estabelecimentosBrutos = (
         await buscarEstabelecimentosGoogle(location, radius, type, query)
-      ).slice(0, 2); 
+      ).slice(0, 60); 
 
       // Processa cada resultado para adicionar detalhes e avaliações
       const promessas = estabelecimentosBrutos.map(async (est) => {

@@ -28,10 +28,3 @@ class AppController {
 
 // Exporta a instância do Express configurada
 module.exports = new AppController().express;
-
-// Se quiser iniciar diretamente sem outro arquivo:
-if (require.main === module) {
-  const app = new AppController().express;
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-}
